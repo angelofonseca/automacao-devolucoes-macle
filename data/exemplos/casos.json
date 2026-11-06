@@ -1,0 +1,10 @@
+{
+  "_leia": "Casos de exemplo para a demo. `python -m defeitos.novo_caso --reset` apaga data/entrada/ e recria estes casos com status novo.",
+  "casos": [
+    {"loja": "1", "codigo": "1.1001.37", "quantidade": 1, "defeito": "Sola descolando no bico"},
+    {"loja": "1", "codigo": "1.1002.36", "quantidade": 1, "defeito": "Tira rompida no primeiro uso"},
+    {"loja": "6", "codigo": "2.2001.40", "quantidade": 1, "defeito": "Costura aberta no calcanhar"},
+    {"loja": "6", "codigo": "2.2001.42", "quantidade": 2, "defeito": "Palmilha soltando"},
+    {"loja": "1", "codigo": "3.3001.39", "quantidade": 1, "defeito": "Zíper quebrado"}
+  ]
+}

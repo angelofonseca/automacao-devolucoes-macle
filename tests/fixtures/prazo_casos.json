@@ -1,0 +1,162 @@
+{
+ "_leia": "Casos da regra de prazo (defeitos/prazo.py). Lidos por tests/test_prazo.py.",
+ "casos": [
+  {
+   "nome": "sem prazo da fábrica: padrão de 24 meses, no último dia",
+   "prazo": null,
+   "emissao": "26/10/2024",
+   "hoje": "2026-10-26",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "sem prazo da fábrica: padrão de 24 meses, um dia depois",
+   "prazo": null,
+   "emissao": "25/10/2024",
+   "hoje": "2026-10-26",
+   "esperado": "fora"
+  },
+  {
+   "nome": "meses nulos com marco não informado: padrão de 24 meses",
+   "prazo": {
+    "meses": null,
+    "marco": "nao_informado"
+   },
+   "emissao": "25/10/2024",
+   "hoje": "2026-10-26",
+   "esperado": "fora"
+  },
+  {
+   "nome": "12 meses da emissão, no último dia",
+   "prazo": {
+    "meses": 12,
+    "marco": "emissao_nf"
+   },
+   "emissao": "26/10/2025",
+   "hoje": "2026-10-26",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "12 meses da emissão, um dia depois",
+   "prazo": {
+    "meses": 12,
+    "marco": "emissao_nf"
+   },
+   "emissao": "25/10/2025",
+   "hoje": "2026-10-26",
+   "esperado": "fora"
+  },
+  {
+   "nome": "marco faturamento conta como emissão",
+   "prazo": {
+    "meses": 6,
+    "marco": "faturamento"
+   },
+   "emissao": "01/06/2026",
+   "hoje": "2026-12-01",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "marco não informado com meses: conta da emissão",
+   "prazo": {
+    "meses": 6
+   },
+   "emissao": "01/06/2026",
+   "hoje": "2026-12-02",
+   "esperado": "fora"
+  },
+  {
+   "nome": "31/01 + 1 mês corta no fim de fevereiro (ano bissexto)",
+   "prazo": {
+    "meses": 1,
+    "marco": "emissao_nf"
+   },
+   "emissao": "31/01/2028",
+   "hoje": "2028-02-29",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "31/01 + 1 mês corta no fim de fevereiro (ano comum)",
+   "prazo": {
+    "meses": 1,
+    "marco": "emissao_nf"
+   },
+   "emissao": "31/01/2027",
+   "hoje": "2027-03-01",
+   "esperado": "fora"
+  },
+  {
+   "nome": "prazo em dias, no último dia",
+   "prazo": {
+    "dias": 90,
+    "marco": "emissao_nf"
+   },
+   "emissao": "01/01/2026",
+   "hoje": "2026-04-01",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "prazo em dias, um dia depois",
+   "prazo": {
+    "dias": 90,
+    "marco": "emissao_nf"
+   },
+   "emissao": "01/01/2026",
+   "hoje": "2026-04-02",
+   "esperado": "fora"
+  },
+  {
+   "nome": "anos de NF: ano coberto",
+   "prazo": {
+    "anosNf": [
+     2024,
+     2025,
+     2026
+    ]
+   },
+   "emissao": "13/10/2024",
+   "hoje": "2026-10-26",
+   "esperado": "dentro"
+  },
+  {
+   "nome": "anos de NF: ano fora da lista",
+   "prazo": {
+    "anosNf": [
+     2024,
+     2025,
+     2026
+    ]
+   },
+   "emissao": "13/10/2022",
+   "hoje": "2026-10-26",
+   "esperado": "fora"
+  },
+  {
+   "nome": "marco que não conta da NF fica indefinido",
+   "prazo": {
+    "meses": 6,
+    "marco": "compra_cliente"
+   },
+   "emissao": "01/01/2020",
+   "hoje": "2026-10-26",
+   "esperado": "indefinido"
+  },
+  {
+   "nome": "NF sem data de emissão fica indefinido",
+   "prazo": null,
+   "emissao": null,
+   "hoje": "2026-10-26",
+   "esperado": "indefinido"
+  },
+  {
+   "nome": "anos de NF com NF sem data fica indefinido",
+   "prazo": {
+    "anosNf": [
+     2026
+    ]
+   },
+   "emissao": null,
+   "hoje": "2026-10-26",
+   "esperado": "indefinido"
+  }
+ ]
+}

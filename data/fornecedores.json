@@ -1,0 +1,36 @@
+{
+  "_leia": "Cadastro FICTÍCIO de fornecedores e lojas (nomes, CNPJs e e-mails inventados; domínio .example não existe). cnpjRaiz = 8 primeiros dígitos do CNPJ. prazo: meses | dias | anosNf contados da emissão da NF; sem prazo = padrão de 24 meses. minimoLote em R$ e minimoPares: o e-mail só sai quando o lote da mesma loja + fornecedor atinge os dois.",
+  "lojas": {
+    "1": {"razao": "Calçados Exemplo Ltda - Loja Centro", "cnpj": "00.000.111/0001-01"},
+    "6": {"razao": "Calçados Exemplo Ltda - Loja Shopping", "cnpj": "00.000.111/0006-06"}
+  },
+  "fornecedores": [
+    {
+      "id": "aurora",
+      "nome": "Aurora Calçados",
+      "cnpjRaiz": ["00100200"],
+      "contato": {"email": "devolucoes@aurora.example"},
+      "prazo": {"meses": 12},
+      "minimoLote": 300.0,
+      "minimoPares": 0
+    },
+    {
+      "id": "passo-firme",
+      "nome": "Passo Firme Tênis",
+      "cnpjRaiz": ["00300400"],
+      "contato": {"email": "qualidade@passofirme.example"},
+      "prazo": {"dias": 180},
+      "minimoLote": 0,
+      "minimoPares": 3
+    },
+    {
+      "id": "trilha",
+      "nome": "Trilha Botas",
+      "cnpjRaiz": ["00500600"],
+      "contato": {"email": null},
+      "prazo": null,
+      "minimoLote": 0,
+      "minimoPares": 0
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+services:
+  erp-mock:
+    build: .
+    command: ["python", "mock_erp/servidor.py", "--host", "0.0.0.0", "--porta", "8080"]
+    env_file: .env
+    ports:
+      - "127.0.0.1:8080:8080"   # exposto só na máquina local (para o simular.py)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 5s
+      retries: 5
+
+  automacao:
+    build: .
+    env_file: .env
+    environment:
+      ERP_URL: http://erp-mock:8080   # nome do serviço na rede interna do compose
+    depends_on:
+      erp-mock:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data       # casos e cadastro
+      - ./saida:/app/saida     # rascunhos .eml e telegram.log (modo arquivo)
+      - ./logs:/app/logs       # execucoes.jsonl
+    restart: unless-stopped

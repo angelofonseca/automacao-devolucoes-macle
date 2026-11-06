@@ -1,0 +1,19 @@
+{
+  "_leia": "Produtos FICTÍCIOS servidos pelo ERP simulado. A chave é o código do item com tamanho (produto.referencia.tamanho).",
+  "produtos": {
+    "1.1001.37": {"marca": "Aurora", "referencia": "AU-2041 Scarpin", "tamanho": "37", "cor": "Preto", "custo": 129.90,
+                  "nf": {"numero": "4501", "emissao": "10/03/2026", "cnpjFornecedor": "00.100.200/0001-10"}},
+    "1.1001.38": {"marca": "Aurora", "referencia": "AU-2041 Scarpin", "tamanho": "38", "cor": "Preto", "custo": 129.90,
+                  "nf": {"numero": "4501", "emissao": "10/03/2026", "cnpjFornecedor": "00.100.200/0001-10"}},
+    "1.1002.36": {"marca": "Aurora", "referencia": "AU-3310 Sandália", "tamanho": "36", "cor": "Caramelo", "custo": 89.90,
+                  "nf": {"numero": "3980", "emissao": "15/08/2025", "cnpjFornecedor": "00.100.200/0001-10"}},
+    "2.2001.40": {"marca": "Passo Firme", "referencia": "PF-880 Tênis Casual", "tamanho": "40", "cor": "Branco", "custo": 159.00,
+                  "nf": {"numero": "7720", "emissao": "01/10/2026", "cnpjFornecedor": "00.300.400/0001-30"}},
+    "2.2001.42": {"marca": "Passo Firme", "referencia": "PF-880 Tênis Casual", "tamanho": "42", "cor": "Branco", "custo": 159.00,
+                  "nf": {"numero": "7720", "emissao": "01/10/2026", "cnpjFornecedor": "00.300.400/0001-30"}},
+    "3.3001.39": {"marca": "Trilha", "referencia": "TR-120 Bota", "tamanho": "39", "cor": "Café", "custo": 219.00,
+                  "nf": {"numero": "1203", "emissao": "05/05/2025", "cnpjFornecedor": "00.500.600/0001-50"}},
+    "9.9001.40": {"marca": "Marca Nova", "referencia": "MN-01 Mocassim", "tamanho": "40", "cor": "Azul", "custo": 99.00,
+                  "nf": {"numero": "555", "emissao": "02/02/2026", "cnpjFornecedor": "00.900.900/0001-90"}}
+  }
+}

@@ -1,0 +1,15 @@
+# Segredos
+.env
+.env.*
+!.env.example
+
+# Dados gerados em execução (casos, rascunhos, log)
+data/entrada/
+saida/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
