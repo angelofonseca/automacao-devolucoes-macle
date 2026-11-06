@@ -183,8 +183,8 @@ Sem Gmail ou Telegram configurados, a automação funciona em **modo arquivo**: 
 1. Clonar o repositório e instalar as dependências:
 
 ```powershell
-git clone https://github.com/<seu-usuario>/automacao-devolucoes-defeitos.git
-cd automacao-devolucoes-defeitos
+git clone https://github.com/angelofonseca/automacao-devolucoes.git
+cd automacao-devolucoes
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
