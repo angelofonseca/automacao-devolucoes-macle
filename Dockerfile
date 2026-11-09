@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY defeitos/ defeitos/
-COPY mock_erp/ mock_erp/
+COPY mock_macle/ mock_macle/
 COPY data/ data/
 
 # Sem --once: fica rodando e faz uma rodada a cada INTERVALO_MIN minutos

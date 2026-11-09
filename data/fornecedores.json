@@ -1,33 +1,51 @@
 {
-  "_leia": "Cadastro FICTÍCIO de fornecedores e lojas (nomes, CNPJs e e-mails inventados; domínio .example não existe). cnpjRaiz = 8 primeiros dígitos do CNPJ. prazo: meses | dias | anosNf contados da emissão da NF; sem prazo = padrão de 24 meses. minimoLote em R$ e minimoPares: o e-mail só sai quando o lote da mesma loja + fornecedor atinge os dois.",
-  "lojas": {
-    "1": {"razao": "Calçados Exemplo Ltda - Loja Centro", "cnpj": "00.000.111/0001-01"},
-    "6": {"razao": "Calçados Exemplo Ltda - Loja Shopping", "cnpj": "00.000.111/0006-06"}
-  },
+  "_leia": "Cadastro FICTÍCIO de fornecedores (nomes, CNPJs e e-mails inventados; domínio .example não existe). cnpjRaiz = 8 primeiros dígitos do CNPJ. prazo: meses | dias | anosNf contados da emissão da NF; sem prazo = padrão de 24 meses. transportadora: CNPJ da transportadora usada na NFD (sem ela, a NFD sai sem transporte). minimoLote em R$ e minimoPares: o e-mail só sai quando o lote da mesma loja + fornecedor atinge os dois.",
   "fornecedores": [
     {
       "id": "aurora",
       "nome": "Aurora Calçados",
-      "cnpjRaiz": ["00100200"],
-      "contato": {"email": "devolucoes@aurora.example"},
-      "prazo": {"meses": 12},
+      "cnpjRaiz": [
+        "00100200"
+      ],
+      "contato": {
+        "email": "devolucoes@aurora.example"
+      },
+      "prazo": {
+        "meses": 12
+      },
       "minimoLote": 300.0,
-      "minimoPares": 0
+      "minimoPares": 0,
+      "transportadora": {
+        "cnpj": "00.700.800/0001-70"
+      }
     },
     {
       "id": "passo-firme",
       "nome": "Passo Firme Tênis",
-      "cnpjRaiz": ["00300400"],
-      "contato": {"email": "qualidade@passofirme.example"},
-      "prazo": {"dias": 180},
+      "cnpjRaiz": [
+        "00300400"
+      ],
+      "contato": {
+        "email": "qualidade@passofirme.example"
+      },
+      "prazo": {
+        "dias": 180
+      },
       "minimoLote": 0,
-      "minimoPares": 3
+      "minimoPares": 3,
+      "transportadora": {
+        "cnpj": "00.711.811/0001-11"
+      }
     },
     {
       "id": "trilha",
       "nome": "Trilha Botas",
-      "cnpjRaiz": ["00500600"],
-      "contato": {"email": null},
+      "cnpjRaiz": [
+        "00500600"
+      ],
+      "contato": {
+        "email": null
+      },
       "prazo": null,
       "minimoLote": 0,
       "minimoPares": 0

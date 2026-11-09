@@ -1,0 +1,11 @@
+{
+  "_leia": "Lojas da demo em Docker: servidores apontam para o serviço macle-sim do docker-compose.",
+  "consulta": "6",
+  "ordemLojas": ["6", "1"],
+  "lojas": {
+    "1": {"nome": "Centro", "razao": "Calçados Exemplo Ltda - Loja Centro", "cnpj": "00.000.111/0001-01",
+          "servidor": "http://macle-sim:8080/Controle/"},
+    "6": {"nome": "Shopping", "razao": "Calçados Exemplo Ltda - Loja Shopping", "cnpj": "00.000.111/0006-06",
+          "servidor": "http://macle-sim:8080/Controle/"}
+  }
+}

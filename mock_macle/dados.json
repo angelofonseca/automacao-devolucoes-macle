@@ -1,0 +1,55 @@
+{
+  "_leia": "Base FICTÍCIA do simulador do MACLE (nomes, CNPJs, chaves e endereços inventados). Itens: empresa.código; compras: documento loja.fornecedor.série.número com a grade comprada; defeitos: empresa.número.",
+  "lojas": {
+    "1": {"nome": "CENTRO", "razao": "Calçados Exemplo Ltda - Loja Centro", "cnpj": "00.000.111/0001-01"},
+    "6": {"nome": "SHOPPING", "razao": "Calçados Exemplo Ltda - Loja Shopping", "cnpj": "00.000.111/0006-06"}
+  },
+  "fornecedores": {
+    "45": {"nome": "AURORA CALCADOS", "cnpj": "00.100.200/0001-10"},
+    "52": {"nome": "PASSO FIRME TENIS", "cnpj": "00.300.400/0001-30"},
+    "60": {"nome": "TRILHA BOTAS", "cnpj": "00.500.600/0001-50"},
+    "70": {"nome": "MARCA NOVA IND", "cnpj": "00.900.900/0001-90"}
+  },
+  "itens": {
+    "1.1001": {"marca": "AURORA", "referencia": "AU-2041", "descricao": "SCARPIN AU-2041", "tipo": "SAPATO", "cor": "PRETO", "grade": "35 A 40", "fornecedor": "45"},
+    "1.1002": {"marca": "AURORA", "referencia": "AU-3310", "descricao": "SANDALIA AU-3310", "tipo": "SANDALIA", "cor": "CARAMELO", "grade": "35 A 40", "fornecedor": "45"},
+    "1.2001": {"marca": "PASSO FIRME", "referencia": "PF-880", "descricao": "TENIS CASUAL PF-880", "tipo": "TENIS", "cor": "BRANCO", "grade": "38 A 43", "fornecedor": "52"},
+    "1.3001": {"marca": "TRILHA", "referencia": "TR-120", "descricao": "BOTA TR-120", "tipo": "BOTA", "cor": "CAFE", "grade": "35 A 40", "fornecedor": "60"},
+    "1.9001": {"marca": "MARCA NOVA", "referencia": "MN-01", "descricao": "MOCASSIM MN-01", "tipo": "MOCASSIM", "cor": "AZUL", "grade": "38 A 43", "fornecedor": "70"}
+  },
+  "compras": [
+    {"documento": "1.45.7.4501", "emissao": "10/03/2026", "movimento": "12/03/2026", "codNFe": "9001",
+     "chave": "43260300100200000110550070000045011000045011", "associarManual": true,
+     "itens": {"1.1001": {"custo": 129.90, "grade": {"35": 1, "36": 2, "37": 2, "38": 2, "39": 1}}},
+     "linhasXml": [
+       {"nitem": "1", "codigo": "AU2041-PT-36", "descricao": "SCARPIN AU-2041 PRETO 36", "qtd": "2"},
+       {"nitem": "2", "codigo": "AU2041-PT-37", "descricao": "SCARPIN AU-2041 PRETO 37", "qtd": "2"},
+       {"nitem": "3", "codigo": "AU2041-PT-38", "descricao": "SCARPIN AU-2041 PRETO 38", "qtd": "2"}
+     ]},
+    {"documento": "1.45.7.3980", "emissao": "15/08/2025", "movimento": "18/08/2025", "codNFe": "8120",
+     "chave": "43250800100200000110550070000039801000039801", "associarManual": false,
+     "itens": {"1.1002": {"custo": 89.90, "grade": {"36": 2, "37": 2}}}},
+    {"documento": "6.52.1.7720", "emissao": "01/10/2026", "movimento": "03/10/2026", "codNFe": "9310",
+     "chave": "43261000300400000130550010000077201000077201", "associarManual": false,
+     "itens": {"1.2001": {"custo": 159.00, "grade": {"40": 3, "41": 3, "42": 3}}}},
+    {"documento": "1.60.2.1203", "emissao": "05/05/2025", "movimento": "07/05/2025", "codNFe": "7004",
+     "chave": "43250500500600000150550020000012031000012031", "associarManual": false,
+     "itens": {"1.3001": {"custo": 219.00, "grade": {"39": 2}}}},
+    {"documento": "1.70.1.555", "emissao": "02/02/2026", "movimento": "04/02/2026", "codNFe": "8555",
+     "chave": "43260200900900000190550010000005551000005551", "associarManual": false,
+     "itens": {"1.9001": {"custo": 99.00, "grade": {"40": 1}}}}
+  ],
+  "defeitos": {
+    "1.60000001": {"item": "1.1001", "tamanho": "37", "quantidade": 1, "cadastro": "03/11/2026", "obs": "Sola descolando no bico"},
+    "1.60000002": {"item": "1.1002", "tamanho": "36", "quantidade": 1, "cadastro": "03/11/2026", "obs": "Tira rompida"},
+    "6.60000003": {"item": "1.2001", "tamanho": "40", "quantidade": 1, "cadastro": "04/11/2026", "obs": "Costura aberta"},
+    "6.60000004": {"item": "1.2001", "tamanho": "42", "quantidade": 2, "cadastro": "04/11/2026", "obs": "Palmilha soltando"},
+    "1.60000005": {"item": "1.3001", "tamanho": "39", "quantidade": 1, "cadastro": "05/11/2026", "obs": "Zíper quebrado"},
+    "1.60000006": {"item": "1.1001", "tamanho": "38", "quantidade": 1, "cadastro": "06/11/2026", "obs": "Salto soltando"},
+    "1.60000007": {"item": "1.9001", "tamanho": "40", "quantidade": 1, "cadastro": "06/11/2026", "obs": "Cor desbotada"}
+  },
+  "transportadoras": [
+    {"codigo": "343", "nome": "TRANSPORTES EXEMPLO", "cnpj": "00.700.800/0001-70", "ie": "0000000001", "endereco": "RUA FICTICIA 100", "bairro": "CENTRO", "cidade": "CIDADE EXEMPLO", "uf": "RS", "cep": "00000-000"},
+    {"codigo": "12", "nome": "RAPIDO FICTICIO", "cnpj": "00.711.811/0001-11", "ie": "0000000002", "endereco": "AV DEMO 50", "bairro": "DISTRITO", "cidade": "CIDADE EXEMPLO", "uf": "RS", "cep": "00000-001"}
+  ]
+}

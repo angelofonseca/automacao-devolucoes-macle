@@ -20,9 +20,9 @@ def rodar(cfg):
     try:
         r = pipeline.executar(cfg)
     except Exception as exc:
-        detalhe = esconder(f'{type(exc).__name__}: {exc}', cfg.erp_senha, cfg.gmail_senha, cfg.telegram_token)
+        detalhe = esconder(f'{type(exc).__name__}: {exc}', *cfg.segredos)
         registrar(cfg.log, evento='rodada', ok=False, erro=detalhe,
-                  traceback=esconder(traceback.format_exc(), cfg.erp_senha, cfg.gmail_senha, cfg.telegram_token))
+                  traceback=esconder(traceback.format_exc(), *cfg.segredos))
         print(f'[ERRO] rodada falhou: {detalhe}', file=sys.stderr)
         try:
             telegram.enviar(cfg, f'🚨 Automação de defeitos: a rodada falhou\n{detalhe}')

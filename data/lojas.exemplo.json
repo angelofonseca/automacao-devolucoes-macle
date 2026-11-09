@@ -1,0 +1,11 @@
+{
+  "_leia": "Lojas e servidores do MACLE. Copie para data/lojas.json (fora do git) e troque pelos dados da sua rede. Este exemplo aponta para o simulador (mock_macle) e usa CNPJs fictícios. servidor: URL do MACLE Controle que atende a loja (lojas podem compartilhar servidor). consulta: loja usada no login das consultas. ordemLojas: preferência ao escolher a NF de compra do produto.",
+  "consulta": "6",
+  "ordemLojas": ["6", "1"],
+  "lojas": {
+    "1": {"nome": "Centro", "razao": "Calçados Exemplo Ltda - Loja Centro", "cnpj": "00.000.111/0001-01",
+          "servidor": "http://127.0.0.1:8080/Controle/"},
+    "6": {"nome": "Shopping", "razao": "Calçados Exemplo Ltda - Loja Shopping", "cnpj": "00.000.111/0006-06",
+          "servidor": "http://127.0.0.1:8080/Controle/"}
+  }
+}

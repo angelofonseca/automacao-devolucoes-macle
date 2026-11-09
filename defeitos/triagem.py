@@ -57,13 +57,14 @@ def corpo_rascunho(itens, loja, agora):
     return '\n'.join(linhas)
 
 
-def planejar(casos, cadastro, hoje, agora):
+def planejar(casos, cadastro, lojas, hoje, agora):
     """Agrupa os casos em lotes e decide o destino de cada um.
 
     casos: lista de dicts (caso.json) já com o campo 'erp'.
-    cadastro: conteúdo de fornecedores.json ({'lojas': {...}, 'fornecedores': [...]}).
+    cadastro: conteúdo de fornecedores.json ({'fornecedores': [...]}); lojas: {número: {'razao', 'cnpj'}} do lojas.json.
+    O lote é da loja da NF de compra (é ela que emite a NFD), não da loja que recebeu o par.
     """
-    fornecedores, lojas = cadastro['fornecedores'], cadastro.get('lojas', {})
+    fornecedores = cadastro['fornecedores']
     bloquear, aguardar, rascunhos = [], [], []
     lotes = {}
 
@@ -73,8 +74,9 @@ def planejar(casos, cadastro, hoje, agora):
             bloquear.append({'protocolo': c['protocolo'], 'motivo': '; '.join(av['trava'])})
             continue
         f = av['fornecedor']
-        chave = f"L{c['loja']}-{f['id']}"   # lote = mesma loja + mesmo fornecedor
-        lote = lotes.setdefault(chave, {'chave': chave, 'loja': c['loja'], 'fornecedor': f, 'casos': [], 'avisos': [], 'fora': []})
+        loja = c['erp']['nf'].get('loja') or c['loja']
+        chave = f"L{loja}-{f['id']}"   # lote = mesma loja + mesmo fornecedor
+        lote = lotes.setdefault(chave, {'chave': chave, 'loja': loja, 'fornecedor': f, 'casos': [], 'avisos': [], 'fora': []})
         lote['casos'].append(c)
         lote['avisos'] += [f"#{c['protocolo']}: {a}" for a in av['avisos']]
         if av['prazo'] and av['prazo']['situacao'] == 'fora':

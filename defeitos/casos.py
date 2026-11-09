@@ -7,13 +7,15 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-# De onde cada status pode ir. "enviado" é marcado pela pessoa depois de revisar e enviar o rascunho.
+# De onde cada status pode ir. "enviado" e "autorizado" são marcados pela pessoa (python -m defeitos.status).
 TRANSICOES = {
     'novo': {'aguardando_lote', 'aguardando_decisao', 'aguardando_aprovacao'},
     'aguardando_lote': {'aguardando_decisao', 'aguardando_aprovacao'},
     'aguardando_decisao': {'novo'},
-    'aguardando_aprovacao': {'enviado'},
-    'enviado': set(),
+    'aguardando_aprovacao': {'enviado'},            # a pessoa revisou e enviou o e-mail
+    'enviado': {'autorizado', 'aguardando_decisao'},  # a fábrica autorizou (ou recusou) a devolução
+    'autorizado': {'nfd_rascunho', 'aguardando_decisao'},
+    'nfd_rascunho': set(),                          # a pessoa confere e emite a NFD na tela do MACLE
 }
 EM_TRIAGEM = {'novo', 'aguardando_lote'}
 CAMPOS = {'protocolo': str, 'loja': str, 'codigo': str, 'quantidade': int, 'defeito': str, 'status': str}
