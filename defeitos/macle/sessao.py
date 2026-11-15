@@ -19,28 +19,14 @@ GET_CONSULTA = [
     r'Item\?action=edit&codEmpItem=\d+&codItem=\d+', r'modEstoque/item/consHistoricoCompra\.jsp\?codEmpItem=\d+&codItem=\d+',
     r'modCompras/docCompra/consDataDocCompra\.jsp\?codEmpresa=\d+&origem=\d+&serie=\w+&numero=\d+',
 ]
-GET_NFD = [
-    r'DevolFornecedor\?action=cons', r'DevolFornecedor\?action=add&resY=\d+', r'DevolFornecedor\?action=(consOrigemWS|consFechamto)',
-    r'DevolFornecedor\?action=setTipoOperacaoDevolForn&codFornFilter=\d+&tipoOperacao=MERCADORIA',
-    r'DevolFornecedor\?action=fechamto&offset=\d+',
-    r'DevolFornecedor\?action=setNItemOrigem&nitem=\d+&codItem=\d+&codTamanho=\w+&chave=\d{44}&codEmpOrig=\d+&origemOrig=\d+&serieOrig=\w+&numeroOrig=\d+',
-    r'DevolFornecedor\?action=confirmaResolveNItem&chave=\d{44}&codEmpOrig=\d+&origemOrig=\d+&serieOrig=\w+&numeroOrig=\d+',
-    r'DevolFornecedor\?action=cad&doAction=origem&cleanOBS=true&infAdicional=',
-    r'modEstoque/devolFornecedor/(continuaDevolucao|consFechamto)\.jsp',
-    r'modCaixa/cadDadosTransporte\.jsp\?codEmpresa=null&origem=0&serie=null&numero=null&resY=\d+&tipoDoc=4',
-    r'Transportadora\?action=selecionaTransportadora&codTransp=\d+',
-    r'NFe\?action=previewDANFE&tipo=devolForn&obs=[^&]*&rndval=\d+', r'tmp/\d+\.pdf',
-]
 # POST: endereço -> valores permitidos de "action". Emitir e cancelar não estão aqui.
-POST_PERMITIDO = {'Defeito': {'setFilterDefeito'},
-                  'DevolFornecedor': {'add', 'defeito', 'setOrigem', 'defeitoByCompra', 'continuarDepois'},
-                  'DadosTransp': {'save'}}
+POST_PERMITIDO = {'Defeito': {'setFilterDefeito'}}
 PROIBIDO = re.compile(r'cancel|sefaz|transmit|emit|envia|autoriza|inutiliz|exclu|delete', re.I)
 
 
 def permitido(metodo, caminho, campos=None):
     if metodo == 'GET':
-        return any(re.fullmatch(r, caminho) for r in GET_CONSULTA + GET_NFD)
+        return any(re.fullmatch(r, caminho) for r in GET_CONSULTA)
     acao = (campos or {}).get('action', '')
     return acao in POST_PERMITIDO.get(caminho, set()) and not PROIBIDO.search(acao)
 
@@ -121,12 +107,3 @@ class SessaoMacle:
         if 'Defeito?action=cons' not in r.html:
             raise ErroIntegracao(SERVICO, 'filtro de defeitos recusado pelo ERP', temporaria=False)
 
-    # NFD: no meio do documento, sessão caída não pode relogar (o documento aberto se perde)
-    def abrir(self, caminho):
-        return self._chamar('GET', caminho, relogar=not caminho.startswith(('DevolFornecedor', 'modEstoque/devol', 'modCaixa', 'NFe', 'tmp/', 'Transportadora'))).html
-
-    def enviar(self, caminho, campos):
-        return self._chamar('POST', caminho, campos, relogar=caminho == 'Defeito').html
-
-    def baixar(self, caminho):
-        return self._chamar('GET', caminho, relogar=False).conteudo

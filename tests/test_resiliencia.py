@@ -45,7 +45,8 @@ class TestListaFechada(unittest.TestCase):
         self.assertFalse(permitido('POST', 'DevolFornecedor', {'action': 'enviarSefaz'}))
         self.assertFalse(permitido('POST', 'DevolFornecedor', {'action': 'cancelDet'}))
         self.assertFalse(permitido('GET', 'NFe?action=geraCCe&codEmpresa=1&codNFe=2'))
-        self.assertTrue(permitido('POST', 'DevolFornecedor', {'action': 'continuarDepois'}))
+        self.assertFalse(permitido('POST', 'DevolFornecedor', {'action': 'continuarDepois'}))  # a NFD é feita pela pessoa
+        self.assertTrue(permitido('POST', 'Defeito', {'action': 'setFilterDefeito'}))
         self.assertTrue(permitido('GET', 'Defeito?action=edit&codEmpresa=1&codDefeito=60000001'))
 
 

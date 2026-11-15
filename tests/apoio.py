@@ -34,7 +34,7 @@ def lojas(url):
 def config_teste(url, pasta=None, **extra):
     pasta = Path(pasta or tempfile.mkdtemp())
     valores = dict(macle_usuario='teste', macle_senha='senha-teste', macle_terminal='001', lojas=lojas(url),
-                   peso_par=0.7, peso_caixa=0.2, gmail_user='', gmail_senha='', telegram_token='', telegram_chat_id='',
+                   gmail_user='', gmail_senha='', telegram_token='', telegram_chat_id='',
                    intervalo_min=60, timeout=2, tentativas=3, entrada=pasta / 'entrada',
                    fornecedores=RAIZ / 'data' / 'fornecedores.json', saida=pasta / 'saida', log=pasta / 'logs' / 'execucoes.jsonl')
     valores.update(extra)

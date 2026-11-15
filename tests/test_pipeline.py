@@ -4,12 +4,9 @@ import json
 import unittest
 from datetime import date, datetime
 from email import policy
-from pathlib import Path
 from unittest import mock
 
 from defeitos import casos, novo_caso, pipeline, status
-from defeitos.macle.pdf import texto_pdf
-from mock_macle import servidor
 from tests.apoio import MacleSimulado, config_teste
 
 HOJE, AGORA = date(2026, 11, 9), datetime(2026, 11, 9, 14, 0)
@@ -21,7 +18,7 @@ def situacao(cfg):
 
 @mock.patch('defeitos.resiliencia.time.sleep', lambda s: None)
 class TestPipeline(unittest.TestCase):
-    def test_fluxo_completo_ate_a_nfd(self):
+    def test_fluxo_completo_ate_a_autorizacao(self):
         with MacleSimulado() as m:
             cfg = config_teste(m.url)
             novo_caso.resetar(cfg.entrada)
@@ -41,38 +38,17 @@ class TestPipeline(unittest.TestCase):
             self.assertEqual(r['rascunhos'][0]['protocolos'], ['1', '2', '6'])
             self.assertTrue(r['rascunhos'][0]['assunto'].endswith('fora do prazo'))
 
-            # a pessoa envia o e-mail e a fábrica autoriza: a rodada seguinte monta a NFD no MACLE
+            # a pessoa envia o e-mail e a fábrica autoriza: daqui a NFD é com a pessoa, a automação não mexe mais
             entrada = ['--entrada', str(cfg.entrada)]
             status.main(['--protocolos', '1,2,6', '--para', 'enviado'] + entrada)
             status.main(['--protocolos', '1,2,6', '--para', 'autorizado'] + entrada)
-            r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertTrue(r['ok'], r['falhas'])
-            self.assertEqual(len(r['nfds']), 1)
-            n = r['nfds'][0]
-            self.assertEqual((n['loja'], n['valor']), ('1', 349.7))
-            self.assertEqual({situacao(cfg)[p] for p in ('1', '2', '6')}, {'nfd_rascunho'})
-            txt = texto_pdf(Path(n['danfe']).read_bytes())
-            self.assertIn('00.700.800/0001-70', txt)  # transportadora do cadastro
-            self.assertIn('2,300', txt)                # peso bruto: 3 pares x 0,7 + 0,2
-            self.assertEqual(servidor.estado['pendentes'][0]['fornecedor'], 'AURORA CALCADOS')
-            self.assertEqual(servidor.estado['defeitos']['1.60000001']['situacao'], 'Enviado')
+            self.assertNotEqual(status.main(['--protocolos', '1', '--para', 'novo'] + entrada), 0)  # autorizado é final
 
             # sem novidade: não cria nada e não avisa
             r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertEqual((r['rascunhos'], r['nfds'], r['avisou']), ([], [], False))
-
-    def test_nfd_ja_pendente_vai_para_decisao(self):
-        with MacleSimulado() as m:
-            cfg = config_teste(m.url)
-            novo_caso.resetar(cfg.entrada)
-            pipeline.executar(cfg, HOJE, AGORA)
-            servidor.estado['pendentes'].append({'loja': '6', 'fornecedor': 'PASSO FIRME TENIS', 'produtos': 1, 'qtd': 1})
-            entrada = ['--entrada', str(cfg.entrada)]
-            status.main(['--protocolos', '3,4', '--para', 'enviado'] + entrada)
-            status.main(['--protocolos', '3,4', '--para', 'autorizado'] + entrada)
-            r = pipeline.executar(cfg, HOJE, AGORA)
-        self.assertEqual(situacao(cfg)['3'], 'aguardando_decisao')
-        self.assertIn('já existe rascunho', r['bloqueados'][0]['motivo'])
+            self.assertTrue(r['ok'], r['falhas'])
+            self.assertEqual({situacao(cfg)[p] for p in ('1', '2', '6')}, {'autorizado'})
+            self.assertEqual((r['rascunhos'], r['avisou']), ([], False))
 
     def test_macle_fora_do_ar_avisa_e_mantem_os_casos(self):
         with MacleSimulado() as m:

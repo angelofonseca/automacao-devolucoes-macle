@@ -5,15 +5,14 @@
    os casos ficam para a próxima e a falha vai no resumo.
 3. Triagem (triagem.planejar): travar, aguardar lote ou montar o e-mail à fábrica.
 4. Aplica o plano: rascunho no Gmail (IMAP) e mudança de status de cada caso.
-5. NFD: casos que a fábrica autorizou viram rascunho da nota de devolução no MACLE (loja da NF de compra).
-6. Resumo no Telegram, só quando houve novidade ou falha.
+5. Resumo no Telegram, só quando houve novidade ou falha.
 """
 import json
 from datetime import date, datetime
 
 from . import casos as repo
 from . import gmail, telegram, triagem
-from .macle import consulta, nfd
+from .macle import consulta
 from .macle.sessao import SessaoMacle
 from .macle.telas import TelaDesconhecida
 from .resiliencia import ErroIntegracao, registrar
@@ -31,7 +30,7 @@ def sessao_loja(cfg, loja, ao_falhar=None):
 
 def executar(cfg, hoje=None, agora=None):
     hoje, agora = hoje or date.today(), agora or datetime.now()
-    r = {'rascunhos': [], 'aguardando': [], 'bloqueados': [], 'invalidos': [], 'nfds': [], 'falhas': [], 'mudancas': 0}
+    r = {'rascunhos': [], 'aguardando': [], 'bloqueados': [], 'invalidos': [], 'falhas': [], 'mudancas': 0}
 
     def log_tentativa(tentativa, erro):
         registrar(cfg.log, evento='falha_tentativa', servico=erro.servico, tentativa=tentativa,
@@ -40,7 +39,7 @@ def executar(cfg, hoje=None, agora=None):
     cadastro = json.loads(cfg.fornecedores.read_text(encoding='utf-8'))
 
     # 1. Leitura e validação
-    todos, pendentes, autorizados = [], [], []
+    todos, pendentes = [], []
     for pasta, caso, erros in repo.listar(cfg.entrada):
         if erros:
             r['invalidos'].append({'pasta': pasta.name, 'erros': erros})
@@ -48,8 +47,6 @@ def executar(cfg, hoje=None, agora=None):
         todos.append(caso)
         if caso['status'] in repo.EM_TRIAGEM:
             pendentes.append((pasta, caso))
-        elif caso['status'] == 'autorizado':
-            autorizados.append((pasta, caso))
 
     def mudar(pasta, caso, status, motivo, **extra):
         mudou = repo.mudar_status(caso, status, motivo)
@@ -107,37 +104,7 @@ def executar(cfg, hoje=None, agora=None):
                   rascunho={'messageId': criado['messageId'], 'para': rasc['para'], 'modo': criado['modo']})
         r['rascunhos'].append({**rasc, 'criado': criado})
 
-    # 5. NFD dos casos autorizados pela fábrica: uma por loja da NF + fornecedor
-    grupos = {}
-    for pasta, caso in autorizados:
-        nf = caso['erp']['nf']
-        grupos.setdefault((nf['loja'], triagem.so_digitos(nf['cnpjFornecedor'])), []).append((pasta, caso))
-    for (loja, cnpj), membros in grupos.items():
-        f = triagem.fornecedor_por_cnpj(cnpj, cadastro['fornecedores']) or {}
-        g = {'loja': loja, 'cnpjLoja': cfg.loja(loja)['cnpj'], 'cnpjFornecedor': membros[0][1]['erp']['nf']['cnpjFornecedor'],
-             'fornecedor': membros[0][1]['erp']['nf']['fornecedor'], 'transportadora': f.get('transportadora'),
-             'casos': [c for _, c in membros]}
-        protocolos = [c['protocolo'] for _, c in membros]
-        try:
-            res = nfd.montar_rascunho(g, sessao_loja(cfg, loja, log_tentativa), cfg.peso_par, cfg.peso_caixa)
-        except nfd.Parada as exc:
-            for pasta, caso in membros:
-                mudar(pasta, caso, 'aguardando_decisao', f'NFD: {exc}', bloqueio=f'NFD: {exc}')
-            r['bloqueados'] += [{'protocolo': p, 'motivo': f'NFD: {exc}'} for p in protocolos]
-            continue
-        except ErroIntegracao as exc:
-            r['falhas'].append(f'{exc} (NFD da loja {loja} fica para a próxima rodada)')
-            continue
-        arquivo = cfg.saida / 'nfd' / f"L{loja}-{cnpj}-{'-'.join(protocolos)}.pdf"
-        arquivo.parent.mkdir(parents=True, exist_ok=True)
-        arquivo.write_bytes(res['danfe'])
-        for pasta, caso in membros:
-            mudar(pasta, caso, 'nfd_rascunho', 'rascunho da NFD salvo no MACLE (Continuar depois)',
-                  nfd={'loja': loja, 'valor': res['valor'], 'danfe': str(arquivo), 'em': agora.isoformat(timespec='seconds')})
-        r['nfds'].append({'fornecedor': f.get('nome') or g['fornecedor'], 'loja': loja, 'valor': res['valor'],
-                          'protocolos': protocolos, 'avisos': res['avisos'], 'danfe': str(arquivo)})
-
-    # 6. Saída: resumo no Telegram
+    # 5. Saída: resumo no Telegram
     r['mensagem'] = mensagem(r, agora)
     r['avisou'] = False
     if r['mudancas'] or r['falhas'] or r['invalidos']:
@@ -157,10 +124,6 @@ def mensagem(r, agora):
         linhas.append(f"✉️ Rascunho pronto para revisar: {x['fornecedor']} (loja {x['loja']}), "
                       f"{x['pares']} {'par' if x['pares'] == 1 else 'pares'}, {brl(x['total'])}, casos #{', #'.join(x['protocolos'])}")
         linhas += [f'   ⚠️ {a}' for a in x['avisos']]
-    for n in r['nfds']:
-        linhas.append(f"🧾 NFD em rascunho no MACLE: {n['fornecedor']} (loja {n['loja']}), {brl(n['valor'] or 0)}, "
-                      f"casos #{', #'.join(n['protocolos'])}. Conferir e emitir na tela.")
-        linhas += [f'   ⚠️ {a}' for a in n['avisos']]
     for a in r['aguardando']:
         falta = []
         if a['total'] < a['minimo']:

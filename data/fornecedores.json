@@ -1,5 +1,5 @@
 {
-  "_leia": "Cadastro FICTÍCIO de fornecedores (nomes, CNPJs e e-mails inventados; domínio .example não existe). cnpjRaiz = 8 primeiros dígitos do CNPJ. prazo: meses | dias | anosNf contados da emissão da NF; sem prazo = padrão de 24 meses. transportadora: CNPJ da transportadora usada na NFD (sem ela, a NFD sai sem transporte). minimoLote em R$ e minimoPares: o e-mail só sai quando o lote da mesma loja + fornecedor atinge os dois.",
+  "_leia": "Cadastro FICTÍCIO de fornecedores (nomes, CNPJs e e-mails inventados; domínio .example não existe). cnpjRaiz = 8 primeiros dígitos do CNPJ. prazo: meses | dias | anosNf contados da emissão da NF; sem prazo = padrão de 24 meses. minimoLote em R$ e minimoPares: o e-mail só sai quando o lote da mesma loja + fornecedor atinge os dois.",
   "fornecedores": [
     {
       "id": "aurora",
@@ -14,10 +14,7 @@
         "meses": 12
       },
       "minimoLote": 300.0,
-      "minimoPares": 0,
-      "transportadora": {
-        "cnpj": "00.700.800/0001-70"
-      }
+      "minimoPares": 0
     },
     {
       "id": "passo-firme",
@@ -32,10 +29,7 @@
         "dias": 180
       },
       "minimoLote": 0,
-      "minimoPares": 3,
-      "transportadora": {
-        "cnpj": "00.711.811/0001-11"
-      }
+      "minimoPares": 3
     },
     {
       "id": "trilha",

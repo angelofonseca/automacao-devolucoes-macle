@@ -1,7 +1,7 @@
 """Marca o que a pessoa fez fora da automação: enviou o e-mail, a fábrica autorizou, decidiu um caso travado.
 
   python -m defeitos.status --protocolos 3,4 --para enviado      revisou e enviou o rascunho do Gmail
-  python -m defeitos.status --protocolos 3,4 --para autorizado   a fábrica autorizou -> próxima rodada monta a NFD
+  python -m defeitos.status --protocolos 3,4 --para autorizado   a fábrica autorizou -> a pessoa faz a NFD no MACLE
   python -m defeitos.status --protocolos 5 --para novo           decisão tomada: volta para a triagem
   python -m defeitos.status --listar                             status de todos os casos
 """

@@ -32,6 +32,8 @@ def png_exemplo(largura=120, altura=80, cor=(200, 60, 60)):
 def criar(entrada, loja, codigo, quantidade, defeito, foto=None):
     if foto and Path(foto).suffix.lower() not in ('.jpg', '.jpeg', '.png', '.webp'):
         raise ValueError('foto precisa ser .jpg, .jpeg, .png ou .webp')
+    if foto and not Path(foto).is_file():  # antes de criar a pasta: senão sobra uma pasta vazia e o protocolo se perde
+        raise ValueError(f'foto não encontrada: {foto}')
     protocolo = repo.proximo_protocolo(entrada)
     pasta = Path(entrada) / protocolo
     pasta.mkdir(parents=True)
@@ -75,7 +77,10 @@ def main(argv=None):
         return 0
     if not (a.loja and a.codigo and a.defeito):
         p.error('informe --loja, --codigo e --defeito (ou --reset)')
-    c = criar(a.entrada, a.loja, a.codigo, a.quantidade, a.defeito, a.foto)
+    try:
+        c = criar(a.entrada, a.loja, a.codigo, a.quantidade, a.defeito, a.foto)
+    except ValueError as exc:
+        p.error(str(exc))
     print(f"caso #{c['protocolo']} registrado (status novo)")
     return 0
 

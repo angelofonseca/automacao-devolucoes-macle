@@ -23,8 +23,6 @@ class Config:
     macle_senha: str
     macle_terminal: str
     lojas: dict               # {'consulta', 'ordemLojas', 'lojas': {n: {'nome', 'razao', 'cnpj', 'servidor'}}}
-    peso_par: float
-    peso_caixa: float
     gmail_user: str
     gmail_senha: str          # vazio = rascunhos vão para saida/rascunhos/*.eml
     telegram_token: str       # vazio = mensagens vão para saida/telegram.log
@@ -118,8 +116,6 @@ def carregar(arquivo_env=None):
         macle_senha=env('MACLE_SENHA'),
         macle_terminal=env('MACLE_TERMINAL') or '001',
         lojas=carregar_lojas(arquivo_lojas),
-        peso_par=_numero('PESO_POR_PAR', 0.7, float),
-        peso_caixa=_numero('PESO_CAIXA', 0.2, float),
         gmail_user=env('GMAIL_USER'),
         gmail_senha=gmail_senha,
         telegram_token=env('TELEGRAM_BOT_TOKEN'),

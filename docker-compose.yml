@@ -17,6 +17,6 @@ services:
       - macle-sim
     volumes:
       - ./data:/app/data       # casos e cadastros
-      - ./saida:/app/saida     # rascunhos .eml, DANFEs e telegram.log (modo arquivo)
+      - ./saida:/app/saida     # rascunhos .eml e telegram.log (modo arquivo)
       - ./logs:/app/logs       # execucoes.jsonl
     restart: unless-stopped

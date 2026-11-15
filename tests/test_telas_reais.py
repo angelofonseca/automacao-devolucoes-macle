@@ -10,7 +10,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from defeitos.macle import pdf, telas
+from defeitos.macle import telas
 from defeitos.macle.html import decodificar
 
 PASTA = Path(os.environ.get('MACLE_FIXTURES', ''))
@@ -36,24 +36,6 @@ class TestTelasReais(unittest.TestCase):
         self.assertIsNotNone(doc['custoUnitario'])
         self.assertTrue(telas.ler_lista_defeitos(self.ler('lista.html')))
         self.assertEqual(telas.campos_filtro(self.ler('filtro.html'), d['item'], date(2026, 11, 9))['action'], 'setFilterDefeito')
-
-    def test_nfd(self):
-        paginas = sorted(PASTA.glob('nfd-item-origem*.html'))  # telas "Selecione o item de origem" salvas
-        if not paginas:
-            self.skipTest('nenhuma nfd-item-origem*.html em MACLE_FIXTURES')
-        for arq in paginas:
-            t = telas.ler_item_origem(decodificar(arq.read_bytes()))
-            self.assertTrue(t['codigo'] and t['linhas'] and t['associar'] and t['confirmar'], arq.name)
-        self.assertTrue(telas.ler_pendentes(self.ler('nfd-pendentes.html')))
-        self.assertTrue(any(len(o['cnpj']) == 14 for o in telas.ler_transportadoras(self.ler('nfd-transporte.html'))))
-
-    def test_danfe(self):
-        arq = PASTA / 'danfe-previa.pdf'
-        if not arq.exists():
-            self.skipTest('danfe-previa.pdf não está em MACLE_FIXTURES')
-        txt = pdf.texto_pdf(arq.read_bytes())
-        self.assertTrue(pdf.itens_danfe(txt))
-        self.assertIsNotNone(pdf.valor_da_nota(txt))
 
 
 if __name__ == '__main__':

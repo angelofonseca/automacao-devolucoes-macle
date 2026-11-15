@@ -11,11 +11,14 @@ def decodificar(dados: bytes) -> str:
         n = 3 if 0xF0 <= c <= 0xF4 else 2 if 0xE0 <= c <= 0xEF else 1 if 0xC2 <= c <= 0xDF else 0
         seq = dados[i + 1:i + 1 + n]
         if c >= 0x80 and n and len(seq) == n and all(x & 0xC0 == 0x80 for x in seq):
-            saida.append(dados[i:i + 1 + n].decode('utf-8'))
-            i += 1 + n
-        else:
-            saida.append(chr(c))
-            i += 1
+            try:  # o formato bate mas pode não ser UTF-8 válido (surrogate, overlong, > U+10FFFF), ex.: bytes de um PDF
+                saida.append(dados[i:i + 1 + n].decode('utf-8'))
+                i += 1 + n
+                continue
+            except UnicodeDecodeError:
+                pass
+        saida.append(chr(c))
+        i += 1
     return ''.join(saida)
 
 
@@ -56,12 +59,6 @@ def campo(pagina: str, nome: str):
     return limpo(_html.unescape(_valor(m.group(0)) or '')) if m else None
 
 
-def textarea_bruto(pagina: str, nome: str):
-    """Conteúdo de <textarea> sem mexer nas quebras de linha (a observação fiscal vai como a tela gerou)."""
-    m = re.search(rf'<textarea[^>]*\bname=["\']?{nome}\b[^>]*>([\s\S]*?)</textarea>', pagina, re.I)
-    return _html.unescape(m.group(1)) if m else None
-
-
 def campos_form(pagina: str, nome=None) -> dict:
     """Campos de um formulário como o navegador enviaria: inputs com valor, checkbox marcado, opção selecionada."""
     forms = re.findall(r'<form\b[\s\S]*?</form>', pagina, re.I)
@@ -92,11 +89,6 @@ def numero(s):
     if not re.fullmatch(r'-?[\d.]+(,\d+)?', v):
         return None
     return float(v.replace('.', '').replace(',', '.'))
-
-
-def br(valor: float, casas=2) -> str:
-    """1234.5 -> '1234,50' (como o MACLE escreve no DANFE e nos formulários)."""
-    return f'{valor:.{casas}f}'.replace('.', ',')
 
 
 def so_digitos(s) -> str:
