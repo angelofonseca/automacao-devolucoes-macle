@@ -24,8 +24,8 @@ class Config:
     macle_terminal: str
     lojas: dict               # {'consulta', 'ordemLojas', 'lojas': {n: {'nome', 'razao', 'cnpj', 'servidor'}}}
     gmail_user: str
-    gmail_senha: str          # vazio = rascunhos vão para saida/rascunhos/*.eml
-    telegram_token: str       # vazio = mensagens vão para saida/telegram.log
+    gmail_senha: str          # senha de app do Gmail (IMAP)
+    telegram_token: str       # token do bot (Bot API)
     telegram_chat_id: str
     intervalo_min: int
     timeout: float
@@ -36,14 +36,6 @@ class Config:
     log: Path
     segredos: tuple = field(default=(), repr=False)
 
-    @property
-    def gmail_ativo(self):
-        return bool(self.gmail_senha)
-
-    @property
-    def telegram_ativo(self):
-        return bool(self.telegram_token)
-
     def loja(self, numero):
         loja = self.lojas['lojas'].get(str(numero))
         if not loja:
@@ -51,9 +43,10 @@ class Config:
         return loja
 
     def __repr__(self):  # nunca imprime senha nem token, nem por engano num log
-        return f"Config(lojas={sorted(self.lojas['lojas'])}, gmail={self.gmail_ativo}, telegram={self.telegram_ativo})"
+        return f"Config(lojas={sorted(self.lojas['lojas'])}, gmail={self.gmail_user!r})"
 
 
+OBRIGATORIAS = ('MACLE_USUARIO', 'MACLE_SENHA', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID')
 LOJAS_PADRAO = RAIZ / 'data' / 'lojas.json'
 LOJAS_EXEMPLO = RAIZ / 'data' / 'lojas.exemplo.json'
 
@@ -96,11 +89,7 @@ def carregar(arquivo_env=None):
     load_dotenv(arquivo_env or RAIZ / '.env')
     env = lambda nome, padrao='': os.environ.get(nome, padrao).strip()
 
-    faltando = [n for n in ('MACLE_USUARIO', 'MACLE_SENHA') if not env(n)]
-    if env('GMAIL_APP_PASSWORD') and not env('GMAIL_USER'):
-        faltando.append('GMAIL_USER')
-    if env('TELEGRAM_BOT_TOKEN') and not env('TELEGRAM_CHAT_ID'):
-        faltando.append('TELEGRAM_CHAT_ID')
+    faltando = [n for n in OBRIGATORIAS if not env(n)]
     if faltando:
         raise ConfigInvalida('Variáveis faltando no .env: ' + ', '.join(faltando) + ' (veja o .env.example)')
 

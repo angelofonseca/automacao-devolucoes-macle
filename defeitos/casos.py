@@ -4,19 +4,20 @@ O status só muda por mudar_status(), que confere se a transição é permitida 
 """
 import json
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 
-# De onde cada status pode ir. "enviado" e "autorizado" são marcados pela pessoa (python -m defeitos.status).
+# De onde cada status pode ir. O fluxo termina no rascunho do e-mail: a pessoa revisa e envia pelo Gmail.
+# Um caso travado volta para a triagem quando a pessoa resolve (python -m defeitos.status --reabrir N).
 TRANSICOES = {
     'novo': {'aguardando_lote', 'aguardando_decisao', 'aguardando_aprovacao'},
     'aguardando_lote': {'aguardando_decisao', 'aguardando_aprovacao'},
     'aguardando_decisao': {'novo'},
-    'aguardando_aprovacao': {'enviado'},            # a pessoa revisou e enviou o e-mail
-    'enviado': {'autorizado', 'aguardando_decisao'},  # a fábrica autorizou (ou recusou) a devolução
-    'autorizado': set(),                            # fim: a pessoa faz a NFD na tela do MACLE
+    'aguardando_aprovacao': set(),  # fim: rascunho criado no Gmail
 }
 EM_TRIAGEM = {'novo', 'aguardando_lote'}
+FOTOS = ('.jpg', '.jpeg', '.png', '.webp')
 CAMPOS = {'protocolo': str, 'loja': str, 'codigo': str, 'quantidade': int, 'defeito': str, 'status': str}
 
 
@@ -73,3 +74,25 @@ def mudar_status(caso, novo, motivo):
 def proximo_protocolo(entrada):
     numeros = [int(p.name) for p in Path(entrada).glob('*') if p.is_dir() and p.name.isdigit()]
     return str(max(numeros, default=0) + 1)
+
+
+def criar(entrada, loja, codigo, quantidade, defeito, foto):
+    """Registra um caso novo com a foto recebida. Devolve o caso gravado (status novo)."""
+    foto = Path(foto)
+    if foto.suffix.lower() not in FOTOS:
+        raise ValueError('foto precisa ser ' + ', '.join(FOTOS))
+    if not foto.is_file():  # antes de criar a pasta: senão sobra uma pasta vazia e o protocolo se perde
+        raise ValueError(f'foto não encontrada: {foto}')
+    protocolo = proximo_protocolo(entrada)
+    pasta = Path(entrada) / protocolo
+    pasta.mkdir(parents=True)
+    nome = f'foto1{foto.suffix.lower()}'
+    shutil.copyfile(foto, pasta / nome)
+    caso = {'protocolo': protocolo, 'loja': str(loja), 'codigo': codigo, 'quantidade': quantidade,
+            'defeito': defeito, 'fotos': [nome], 'status': 'novo', 'recebidoEm': datetime.now().isoformat(timespec='seconds')}
+    erros = validar(caso)
+    if erros:
+        shutil.rmtree(pasta)
+        raise ValueError('; '.join(erros))
+    gravar(pasta, caso)
+    return caso

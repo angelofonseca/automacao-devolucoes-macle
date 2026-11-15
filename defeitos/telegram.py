@@ -1,10 +1,4 @@
-"""Telegram Bot API (HTTPS, token do bot no .env): envio de mensagens e recepção de fotos.
-
-Sem token configurado, a mensagem vai para saida/telegram.log (útil para testar sem bot).
-A recepção (receber, baixar_arquivo) exige o token: é usada por defeitos/recepcao.py.
-"""
-from datetime import datetime
-
+"""Telegram Bot API (HTTPS, token do bot no .env): envio de mensagens e recepção das fotos dos casos."""
 import requests
 
 from .resiliencia import ErroIntegracao, checar_status, com_retry, esconder
@@ -15,13 +9,6 @@ LIMITE = 4096  # tamanho máximo de uma mensagem no Telegram
 
 def enviar(cfg, texto, ao_falhar=None):
     texto = texto if len(texto) <= LIMITE else texto[:LIMITE - 20] + '\n… (cortado)'
-    if not cfg.telegram_ativo:
-        arquivo = cfg.saida / 'telegram.log'
-        arquivo.parent.mkdir(parents=True, exist_ok=True)
-        with open(arquivo, 'a', encoding='utf-8') as f:
-            f.write(f'--- {datetime.now():%d/%m/%Y %H:%M:%S}\n{texto}\n')
-        return {'modo': 'arquivo', 'arquivo': str(arquivo)}
-
     url = f'https://api.telegram.org/bot{cfg.telegram_token}/sendMessage'
 
     def tentar():

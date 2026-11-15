@@ -1,51 +1,176 @@
 # Automação de devoluções de produtos com defeito (ERP MACLE)
 
-Automação em Python para lojas de calçados que usam o ERP **MACLE Controle**. Ela cuida da devolução à fábrica de produtos com defeito:
-- lê no MACLE o defeito, o item e a nota fiscal de compra;
-- aplica as regras de cada fábrica (prazo de garantia, lote mínimo);
-- deixa o e-mail de devolução pronto no Gmail;
-- avisa o responsável no Telegram a cada passo.
+## O que o projeto faz
 
-> Roda em produção numa rede de lojas desde outubro de 2026. Este repositório é a versão pública: nomes, CNPJs e e-mails são **fictícios**. Para a demo e os testes há um **simulador do MACLE** (`mock_macle/`) que serve as mesmas telas do sistema real, com dados inventados.
+Automatiza o início do processo de devolução de mercadorias com defeito, do recebimento do caso até o rascunho do e-mail para a fábrica.
+
+1. **Recebe o caso pelo Telegram**: o gerente manda ao bot a foto do par com o código do produto na legenda.
+2. **Consulta o MACLE**: acha os dados do produto, a nota fiscal de compra, a fábrica e o custo, com uma consulta no ERP.
+3. **Aplica as regras de cada fábrica**: prazo de garantia e lote mínimo (em R$ e em pares).
+4. **Prepara o e-mail de devolução**: cria o rascunho no Gmail, com as fotos anexadas.
+5. **Avisa no Telegram**: confirma cada caso registrado e manda o resumo de cada rodada (rascunhos prontos, lotes esperando, casos travados, falhas).
+
+A automação **nunca envia o e-mail**: a pessoa revisa o rascunho no Gmail e envia.
 
 ---
 
-## 1. Sobre o projeto e problema resolvido
+## Como rodar
 
-**A dor.** O cliente devolve um par com defeito de fábrica e a loja precisa cobrar a fábrica. À mão, o processo era assim:
+### Instalações necessárias
+
+| O quê | Para quê |
+|---|---|
+| Linux com [Python 3.10+](https://www.python.org/downloads/) e [Git](https://git-scm.com/downloads) | rodar a automação e o simulador do ERP |
+| Bibliotecas `requests` e `python-dotenv` | instaladas pelo `requirements.txt` |
+| Conta Gmail com [senha de app](https://myaccount.google.com/apppasswords) | criar os rascunhos (precisa da verificação em duas etapas ativa) |
+| Bot do Telegram criado no [@BotFather](https://t.me/BotFather) | receber os casos e mandar os resumos |
+| [Docker](https://docs.docker.com/get-docker/) + Docker Compose (opcional) | rodar tudo em containers |
+
+### Passo a passo (demo com o simulador)
+
+**1. Baixar o projeto**
+
+```bash
+git clone https://github.com/angelofonseca/automacao-devolucoes-macle.git
+cd automacao-devolucoes-macle
+```
+
+**2. Criar o ambiente virtual e instalar as dependências**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+**3. Criar e preencher o `.env`**
+
+```bash
+cp .env.example .env
+```
+
+Preencha no `.env` (todas são obrigatórias):
+- **Gmail**: `GMAIL_USER` com a sua conta e `GMAIL_APP_PASSWORD` com a senha de app.
+- **Telegram**: `TELEGRAM_BOT_TOKEN` com o token que o @BotFather dá. Para achar o `TELEGRAM_CHAT_ID`, mande qualquer mensagem ao bot e abra `https://api.telegram.org/bot<TOKEN>/getUpdates`: o número está em `"chat": {"id": ...}`. Só esse chat registra casos e recebe os resumos.
+- **MACLE**: para a demo, deixe `MACLE_USUARIO` e `MACLE_SENHA` como estão. O simulador aceita os mesmos valores do `.env`.
+
+**4. Subir o simulador do MACLE** (num terminal separado, com o ambiente virtual ativo)
+
+```bash
+python mock_macle/servidor.py
+```
+
+Rodando em `http://127.0.0.1:8080/Controle/`.
+
+**5. Subir a automação**
+
+```bash
+python -m defeitos.main
+```
+
+Ela fica ouvindo o bot e, além disso, faz uma rodada a cada `INTERVALO_MIN` minutos (padrão 60) para pegar o que ficou para trás. `Ctrl+C` para parar.
+
+**6. Mandar as fotos ao bot**
+
+No Telegram, abra o chat com o seu bot e mande **uma foto por caso** (qualquer imagem serve na demo) com o **código do produto na legenda**. A legenda aceita dois formatos:
+- **item com tamanho**: `empresa.item.tamanho`, ex.: `1.2001.40`;
+- **código do defeito no MACLE**: `loja.número`, ex.: `6.60000003`.
+
+Depois do código, se quiser, escreva a descrição do defeito (ex.: `1.2001.40 Costura aberta`). Sem descrição, vale a observação cadastrada no MACLE.
+
+O simulador só conhece os códigos abaixo: são os **únicos defeitos cadastrados no MACLE simulado** (`mock_macle/dados.json`). Um código fora desta lista recebe a resposta "nenhum defeito em aberto", como aconteceria no MACLE real.
+
+| Legenda (item.tamanho) | ou código do defeito | Produto | Fábrica | Loja | Qtd. |
+|---|---|---|---|---|---|
+| `1.2001.40` | `6.60000003` | Tênis casual PF-880 branco | Passo Firme | 6 | 1 |
+| `1.2001.42` | `6.60000004` | Tênis casual PF-880 branco | Passo Firme | 6 | 2 |
+| `1.1001.37` | `1.60000001` | Scarpin AU-2041 preto | Aurora | 1 | 1 |
+| `1.1002.36` | `1.60000002` | Sandália AU-3310 caramelo | Aurora | 1 | 1 |
+| `1.1001.38` | `1.60000006` | Scarpin AU-2041 preto | Aurora | 1 | 1 |
+| `1.3001.39` | `1.60000005` | Bota TR-120 café | Trilha | 1 | 1 |
+| `1.9001.40` | `1.60000007` | Mocassim MN-01 azul | Marca Nova | 1 | 1 |
+
+Cada código só pode ser usado **uma vez**: depois de registrado, o defeito já tem caso. As regras de cada fábrica estão em `data/fornecedores.json`:
+- **Passo Firme**: o e-mail sai quando o lote chega a **3 pares**;
+- **Aurora**: o e-mail sai quando o lote chega a **R$ 300,00**, e a garantia é de 12 meses da NF;
+- **Trilha**: está cadastrada **sem e-mail**, então o caso trava;
+- **Marca Nova**: **não está cadastrada**, então o caso trava.
+
+Roteiro sugerido, nesta ordem:
+
+| Mande as fotos | O que o bot responde |
+|---|---|
+| 1. `1.2001.40` | caso registrado; lote da Passo Firme espera (1 de 3 pares) |
+| 2. `1.2001.42` | lote completo (3 pares): **rascunho criado no Gmail** |
+| 3. `1.1001.37` | caso registrado; lote da Aurora espera (R$ 129,90 de R$ 300,00) |
+| 4. `1.1002.36` | lote da Aurora ainda espera (R$ 219,80, faltam R$ 80,20) |
+| 5. `1.1001.38` | lote da Aurora fecha (R$ 349,70): **rascunho criado**, com "fora do prazo" no assunto (a NF da sandália passou dos 12 meses) |
+| 6. `1.3001.39` | caso **travado**: Trilha sem e-mail de contato |
+| 7. `1.9001.40` | caso **travado**: fábrica fora do cadastro de fornecedores |
+
+Os rascunhos ficam na pasta **Rascunhos** do Gmail configurado. Os e-mails das fábricas de exemplo terminam em `.example` e não existem: confira o rascunho, mas não o envie. Para recomeçar a demo do zero, pare a automação e o simulador, apague as pastas `data/entrada/` e `saida/` e suba os dois de novo.
+
+**Com Docker** (no lugar dos passos 2, 4 e 5): depois de preencher o `.env`, rode `docker compose up --build`.
+
+### Casos travados
+
+Caso travado (fábrica sem cadastro ou sem e-mail, defeito não encontrado no MACLE) fica em `aguardando_decisao`, com o motivo no resumo do Telegram. Depois de resolver (ex.: cadastrar o e-mail da fábrica no `data/fornecedores.json`), reabra o caso para ele voltar à triagem na próxima rodada:
+
+```bash
+python -m defeitos.status               # status de todos os casos
+python -m defeitos.status --reabrir 5   # o caso 5 volta para a triagem
+```
+
+### Usar no MACLE da sua loja
+
+1. **`.env`**: o login de verdade em `MACLE_USUARIO`, `MACLE_SENHA` e `MACLE_TERMINAL`. O usuário precisa de permissão nas telas de Defeito, Item e Compras.
+2. **`data/lojas.json`** (fica fora do git): copie o `data/lojas.exemplo.json` e preencha:
+   - para cada loja: número, CNPJ, razão social e `servidor`, a URL do MACLE que atende a loja (ex.: `http://IP-DO-SERVIDOR:8080/Controle/`);
+   - `consulta`: a loja usada no login das consultas;
+   - `ordemLojas`: a preferência para escolher a NF de compra.
+3. **`data/fornecedores.json`**: as fábricas com quem você trabalha (CNPJ, e-mail de devolução, prazo, lote mínimo).
+4. Rode `python -m defeitos.main` e mande as fotos ao bot.
+
+### Testes
+
+Os testes usam o simulador e um Gmail e um Telegram falsos, então não precisam de rede nem do `.env`:
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+**Fidelidade ao MACLE real:** salve páginas do seu MACLE numa pasta fora do repositório (`defeito.html`, `item.html`, `historico.html`, `documento.html`, `lista.html`, `filtro.html`) e rode:
+
+```bash
+MACLE_FIXTURES=/caminho/das/paginas python -m unittest tests.test_telas_reais
+```
+
+---
+
+## Detalhes técnicos
+
+### O problema resolvido
+
+À mão, o processo era assim:
 1. o gerente cadastra o defeito no MACLE e avisa por WhatsApp;
 2. alguém procura no MACLE de qual nota fiscal e de qual fábrica o par veio, e quanto custou;
 3. confere na política daquela fábrica se ainda está no prazo e se já há pares suficientes para o lote mínimo;
-4. escreve o e-mail com referência, numeração, NF e fotos de cada par;
-5. quando a fábrica autoriza, monta a NFD no MACLE.
+4. escreve o e-mail com referência, numeração, NF e fotos de cada par.
 
-Com várias lojas e dezenas de fábricas, cada uma com uma regra, os casos se perdiam: o prazo vencia esperando o lote fechar ou o par ficava esquecido na estante.
-
-**O que a automação faz:**
-- Cada caso vira um arquivo JSON.
-- A cada rodada, a automação consulta o MACLE, agrupa os casos por loja e fábrica, aplica as regras e prepara o e-mail.
-- A pessoa **revisa e envia o e-mail** e, depois da autorização da fábrica, **faz a NFD no MACLE**. A automação não mexe em nota fiscal.
-
-**Ganho prático:**
-- nenhum caso fica sem dono;
-- os dados vêm do ERP, sem redigitar;
-- prazo e lote mínimo são conferidos por regra;
-- falhas de sistema chegam na hora no celular.
+Com várias lojas e dezenas de fábricas, cada uma com uma regra, os casos se perdiam: o prazo vencia esperando o lote fechar ou o par ficava esquecido na estante. Com a automação, nenhum caso fica sem dono, os dados vêm do ERP, prazo e lote mínimo são conferidos por regra e as falhas de sistema chegam na hora no celular.
 
 <!-- TODO (Angelo): número real de ganho, ex.: "antes ~X h/semana, hoje ~Y min; N casos desde out/2026". -->
 
----
-
-## 2. Arquitetura e fluxo de funcionamento
+### Arquitetura e fluxo
 
 ```mermaid
 flowchart LR
     subgraph G["Gatilho"]
-        T["Agendamento<br/>(INTERVALO_MIN ou --once)"]
-        N["Novo caso<br/>novo_caso.py"]
-        H["Pessoa: enviou /<br/>fábrica autorizou<br/>status.py"]
+        R["Foto no Telegram<br/>(long polling)"]
+        T["Rodada agendada<br/>(INTERVALO_MIN)"]
     end
     subgraph P["Processamento (Python)"]
+        RE["Recepção<br/>recepcao.py"]
         C[("data/entrada/N/caso.json")]
         CO["Consulta MACLE<br/>defeito → item → NF"]
         TR["Triagem<br/>prazo, lote, travas"]
@@ -53,12 +178,14 @@ flowchart LR
     end
     subgraph S["Saída"]
         GM["Gmail<br/>rascunho (IMAP SSL)"]
-        TG["Telegram<br/>resumo (Bot API)"]
+        TG["Telegram<br/>confirmação e resumo"]
         L[("logs/execucoes.jsonl")]
     end
     M["MACLE Controle<br/>(HTTP + HTML)"]
-    N --> C
-    H --> C
+    R --> RE
+    RE <-->|"confere o defeito"| M
+    RE --> C
+    RE --> TG
     T --> C
     C --> CO <-->|"login + telas"| M
     CO --> TR
@@ -68,41 +195,28 @@ flowchart LR
     TR --> L
 ```
 
-**Caminho dos dados (Gatilho → Processamento → Saída):**
-
-1. **Gatilho.**
-   - O `defeitos/main.py` roda uma rodada a cada `INTERVALO_MIN` minutos, ou uma vez com `--once`.
-   - Casos entram por `novo_caso.py`, que faz o papel da recepção do WhatsApp em produção.
-   - O que a pessoa faz fora do sistema (enviou o e-mail, a fábrica autorizou) é marcado com `status.py`.
-2. **Consulta no MACLE** (`defeitos/macle/`). O MACLE **não tem API**: a automação faz o mesmo caminho que a pessoa faz na tela e lê o HTML.
-   - Login com empresa, terminal, usuário e senha, e cookie de sessão.
-   - Filtro de defeitos pelo item, para achar o defeito em aberto do tamanho.
-   - Telas do defeito e do item.
-   - Histórico de compras, para escolher a NF pela ordem de lojas do `lojas.json`.
-   - Documento de compra: CNPJ do fornecedor, emissão e custo.
-
-   Cada tela tem uma função de leitura em `telas.py`, e o resultado vai para o `caso.json`.
-3. **Triagem** (`triagem.py`). Acha a fábrica pelo CNPJ da NF e decide:
+1. **Gatilho** (`defeitos/main.py`). Um processo só: ouve o bot por long polling e, a cada `INTERVALO_MIN` minutos, faz uma rodada agendada. Cada caso registrado dispara uma rodada na hora.
+2. **Recepção** (`recepcao.py`). Lê o código na legenda, confere no MACLE que há um defeito em aberto daquele item e tamanho, baixa a foto, grava o caso e responde no chat. Mensagens de outros chats são ignoradas.
+3. **Consulta no MACLE** (`defeitos/macle/`). O MACLE **não tem API**: a automação faz o mesmo caminho que a pessoa faz na tela e lê o HTML (login, filtro de defeitos, defeito, item, histórico de compras e documento de compra). Cada tela tem uma função de leitura em `telas.py`, e o resultado vai para o `caso.json`.
+4. **Triagem** (`triagem.py`). Acha a fábrica pelo CNPJ da NF e decide:
    - sem cadastro ou sem e-mail → **trava**, o caso vai para decisão humana;
    - fora do prazo → **não trava**: o assunto do e-mail ganha "fora do prazo" e a fábrica decide;
    - casos da mesma loja da NF e da mesma fábrica formam um **lote**, que só vira e-mail ao atingir o mínimo em R$ e em pares.
-4. **E-mail.** O `gmail.py` grava o rascunho, com as fotos anexadas, na pasta Rascunhos por IMAP. **Nunca envia.**
-5. **Resumo.** O Telegram recebe o que mudou na rodada, e cada rodada vira uma linha em `logs/execucoes.jsonl`.
+5. **E-mail.** O `gmail.py` grava o rascunho, com as fotos anexadas, na pasta Rascunhos por IMAP. **Nunca envia.**
+6. **Resumo.** O Telegram recebe o que mudou na rodada, e cada rodada vira uma linha em `logs/execucoes.jsonl`.
 
 **Ciclo de vida de um caso** (só as transições de `casos.py` são aceitas):
 
 ```mermaid
 stateDiagram-v2
-    [*] --> novo
+    [*] --> novo: foto no Telegram
     novo --> aguardando_lote: lote abaixo do mínimo
     novo --> aguardando_decisao: trava
-    novo --> aguardando_aprovacao: e-mail em rascunho
+    novo --> aguardando_aprovacao: rascunho criado
     aguardando_lote --> aguardando_aprovacao: lote fechou
-    aguardando_decisao --> novo: pessoa decidiu
-    aguardando_aprovacao --> enviado: pessoa enviou
-    enviado --> autorizado: fábrica autorizou
-    enviado --> aguardando_decisao: fábrica recusou
-    autorizado --> [*]: pessoa faz a NFD no MACLE
+    aguardando_lote --> aguardando_decisao: trava
+    aguardando_decisao --> novo: status --reabrir
+    aguardando_aprovacao --> [*]: pessoa revisa e envia
 ```
 
 ### Segurança no ERP
@@ -111,150 +225,37 @@ O usuário do MACLE pode alterar dados. Por isso a sessão (`macle/sessao.py`) s
 - **devolução, emitir no SEFAZ, cancelar, excluir e carta de correção não estão na lista** e são recusados antes de sair da máquina;
 - redirecionamentos só são seguidos para dentro da mesma lista.
 
+Credenciais (MACLE, senha de app do Gmail, token do bot) vêm só do `.env`, que fica fora do git. A `Config` não imprime segredos, e as mensagens de erro passam por `esconder()` antes de ir para o log ou para o Telegram.
+
 ### Resiliência e tratamento de erros
 | Situação | Comportamento |
 |---|---|
+| Variável obrigatória faltando no `.env` | não sobe: `[CONFIG] Variáveis faltando no .env: …` |
 | Timeout, conexão recusada, HTTP 5xx ou 429 | **retry com backoff** (1 s, 2 s, 4 s…) até `TENTATIVAS`; cada tentativa vai para o log |
 | Senha errada ou ação fora da lista | **não repete** (repetir não muda o resultado): erro claro na hora |
-| Sessão do MACLE expirou (consulta) | novo login automático e repete a tela uma vez |
-| MACLE fora do ar | os casos ficam para a próxima rodada e o Telegram recebe "🚨 Falha: MACLE…" |
-| Tela com formato inesperado ou defeito não encontrado | o caso vai para `aguardando_decisao` com o motivo |
-| `caso.json` quebrado | ignorado com motivo no resumo; os outros seguem |
-| Rodar de novo | **idempotente**: o status anda e o rascunho de e-mail tem Message-ID fixo por lote |
-| Erro inesperado | traceback no log (com segredos mascarados), aviso no Telegram, e o agendamento continua |
+| Sessão do MACLE expirou | novo login automático e repete a tela uma vez |
+| MACLE fora do ar | o bot responde que não conseguiu registrar; casos já registrados ficam para a próxima rodada e o resumo traz "🚨 Falha: MACLE…" |
+| Telegram fora do ar | a automação espera 30 s e volta a ouvir; nenhuma foto se perde (o Telegram guarda até ser lida) |
+| Código sem defeito em aberto no MACLE | o bot responde pedindo para conferir o código ou cadastrar o defeito |
+| Reiniciar a automação | a mesma foto não é registrada duas vezes (offset em `saida/telegram_offset.txt`) e o rascunho tem Message-ID fixo por lote |
+| Erro inesperado | traceback no log (com segredos mascarados), aviso no Telegram, e o processo continua |
 
----
-
-## 3. Tecnologias e APIs utilizadas
+### Tecnologias
 
 | Camada | Tecnologia |
 |---|---|
 | Linguagem | Python 3.10+ |
 | ERP | MACLE Controle por HTTP: `requests.Session` (cookie, timeout, sem redirecionamento automático), leitura de HTML com `re` |
 | E-mail | `imaplib` + `ssl` (IMAP4 sobre TLS, porta 993), `email` (MIME com anexos) |
-| Mensageria | Telegram Bot API (`sendMessage`, HTTPS) |
+| Mensageria | Telegram Bot API (`getUpdates` com long polling, `getFile`, `sendMessage`, HTTPS) |
 | Dados | JSON (casos, `fornecedores.json`, `lojas.json`, log JSONL) |
 | Credenciais | `.env` + `python-dotenv` |
 | Simulador | `http.server` (biblioteca padrão): telas de consulta do MACLE e sessão |
 | Containers | Docker + Docker Compose (opcional) |
-| Testes | `unittest`: 31 testes, a maioria contra o simulador, mais 1 de fidelidade com páginas reais |
+| Testes | `unittest`: 35 testes, a maioria contra o simulador, mais 1 de fidelidade com páginas reais |
 
-**Autenticação:**
-- MACLE: formulário de login com usuário e senha e cookie de sessão;
-- Gmail: IMAP com **senha de app**;
-- Telegram: **token do bot**.
+### Melhorias futuras
 
-Nada disso está no código: vem do `.env`, que fica fora do git. A `Config` não imprime segredos, e as mensagens de erro passam por `esconder()` antes de ir para o log ou para o Telegram.
-
----
-
-## 4. Pré-requisitos e como executar
-
-**Pré-requisitos:**
-- Python 3.10+.
-- Para usar na sua loja: acesso ao MACLE Controle pela rede da loja e um usuário com permissão nas telas de Defeito, Item e Compras.
-- Opcional: Gmail com [senha de app](https://myaccount.google.com/apppasswords) e um bot do Telegram criado no [@BotFather](https://t.me/BotFather).
-
-Sem Gmail ou Telegram configurados, a automação roda em **modo arquivo**: os rascunhos vão para `saida/rascunhos/*.eml` e o resumo para `saida/telegram.log`.
-
-### Rodar a demo (simulador)
-
-1. Instalar as dependências:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-2. Criar o `.env` a partir do exemplo:
-
-```powershell
-copy .env.example .env
-```
-
-3. Subir o simulador num terminal separado:
-
-```powershell
-python mock_macle\servidor.py
-```
-
-4. Criar os casos de exemplo e rodar uma vez:
-
-```powershell
-python -m defeitos.novo_caso --reset
-python -m defeitos.main --once
-```
-
-Sem `data/lojas.json`, a automação usa `data/lojas.exemplo.json`, que aponta para o simulador. Com Docker, `docker compose up --build` sobe o simulador e a automação juntos.
-
-### Usar no MACLE da sua loja
-1. **`.env`**: o login de verdade em `MACLE_USUARIO`, `MACLE_SENHA` e `MACLE_TERMINAL`.
-2. **`data/lojas.json`** (fora do git): copie o `lojas.exemplo.json` e preencha:
-   - para cada loja: número, CNPJ, razão social e `servidor`, a URL do MACLE que atende a loja (ex.: `http://IP-DO-SERVIDOR:8080/Controle/`);
-   - `consulta`: a loja usada no login das consultas;
-   - `ordemLojas`: a preferência para escolher a NF de compra.
-3. **`data/fornecedores.json`**: as fábricas com quem você trabalha (CNPJ, e-mail de devolução, prazo, lote mínimo). É o conhecimento do seu setor sobre cada fábrica.
-4. Rode `python -m defeitos.main --once` e confira o resumo. Para deixar agendado, rode `python -m defeitos.main` ou use o Agendador de Tarefas / cron com `--once`.
-
-### Testes
-
-```bash
-python -m unittest discover -s tests -t .
-```
-
-**Fidelidade ao MACLE real:** salve páginas do seu MACLE numa pasta fora do repositório (`defeito.html`, `item.html`, `historico.html`, `documento.html`, `lista.html`, `filtro.html`…) e rode:
-
-```bash
-MACLE_FIXTURES=/caminho/das/paginas python -m unittest tests.test_telas_reais
-```
-
-### Roteiro da demo
-1. `python -m defeitos.novo_caso --reset` e `python -m defeitos.main --once`:
-   - o e-mail da Passo Firme fica pronto;
-   - o lote da Aurora espera (faltam R$ 80,20);
-   - a Trilha vai para decisão.
-2. Chega um par novo: `python -m defeitos.novo_caso --loja 1 --codigo 1.1001.38 --defeito "Salto soltando"`, depois `--once`.
-   - O lote da Aurora fecha e o e-mail sai com "fora do prazo" no assunto.
-3. A pessoa envia o e-mail e a fábrica autoriza:
-
-```bash
-python -m defeitos.status --protocolos 1,2,6 --para enviado
-python -m defeitos.status --protocolos 1,2,6 --para autorizado
-```
-
-   - Daqui a NFD é com a pessoa, no MACLE. Rodar `--once` de novo não muda nada nesses casos.
-4. Simular o MACLE fora do ar: `python mock_macle\simular.py 503 5`, registrar um caso e rodar `--once`.
-   - O log mostra 3 tentativas e o Telegram recebe o alerta.
-   - Depois, `python mock_macle\simular.py normal`.
-
----
-
-## 5. Demonstração (resultados)
-
-Saída real das três rodadas do roteiro (console e mensagem do Telegram):
-
-```text
-📦 Defeitos — rodada de 09/11 14:20
-✉️ Rascunho pronto para revisar: Passo Firme Tênis (loja 6), 3 pares, R$ 477,00, casos #3, #4
-⏳ Lote Aurora Calçados (loja 1): R$ 219,80, faltam R$ 80,20 (mínimo R$ 300,00)
-⛔ Caso #5 precisa de decisão: Trilha Botas: sem e-mail de contato cadastrado
-
-📦 Defeitos — rodada de 09/11 14:20
-✉️ Rascunho pronto para revisar: Aurora Calçados (loja 1), 3 pares, R$ 349,70, casos #1, #2, #6
-   ⚠️ #2: fora do prazo (12 meses da NF de 15/08/2025: vence em 15/08/2026)
-
-📦 Defeitos — rodada de 09/11 14:20
-🚨 Falha: MACLE: HTTP 503 em página de login (depois de 3 tentativas)
-   1 caso(s) ficam para a próxima rodada.
-```
-
-<!-- TODO (Angelo): adicionar em docs/img/ e trocar por imagens: o resumo no Telegram e o rascunho no Gmail. -->
-
----
-
-## 6. Melhorias futuras (roadmap)
-
-1. **Ler a resposta da fábrica no Gmail.** Hoje a autorização é marcada com `status.py`. A próxima etapa é detectar a resposta e classificá-la (autorizou, recusou, pediu dados) com um LLM via API, com saída JSON validada por esquema e conferida antes de qualquer ação.
-2. **Acompanhar a NFD emitida.** Detectar no MACLE quando a pessoa emite a nota, baixar o XML autorizado e o DANFE e preparar o e-mail de resposta à fábrica com os anexos.
+1. **Acompanhar o envio e a resposta da fábrica** (próximo passo). Detectar no Gmail que a pessoa enviou o e-mail e classificar a resposta da fábrica (autorizou, recusou, pediu dados), com um LLM via API, saída JSON validada por esquema e conferida antes de qualquer ação.
+2. **NFD.** Depois da autorização, preparar a nota fiscal de devolução no MACLE e, quando a pessoa emitir, mandar o XML e o DANFE à fábrica.
 3. **Painel e fim do ciclo.** Um painel web com os casos parados há mais tempo em cada etapa, incluindo o envio do produto e o ressarcimento da fábrica.

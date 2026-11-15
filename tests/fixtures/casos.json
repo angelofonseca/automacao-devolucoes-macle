@@ -1,5 +1,5 @@
 {
-  "_leia": "Casos de exemplo para a demo (códigos do simulador do MACLE: item.tamanho). `python -m defeitos.novo_caso --reset` apaga data/entrada/ e recria estes casos com status novo.",
+  "_leia": "Casos de exemplo dos testes (códigos do simulador do MACLE: item.tamanho). tests/apoio.resetar() recria estes casos com status novo.",
   "casos": [
     {
       "loja": "1",

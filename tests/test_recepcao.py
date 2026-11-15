@@ -2,8 +2,8 @@
 import unittest
 from unittest import mock
 
-from defeitos import casos, novo_caso, recepcao
-from tests.apoio import MacleSimulado, config_teste
+from defeitos import casos, recepcao
+from tests.apoio import MacleSimulado, config_teste, png_exemplo, resetar
 
 
 def foto(codigo):
@@ -27,30 +27,29 @@ class TestLerMensagem(unittest.TestCase):
 class TestAtender(unittest.TestCase):
     def setUp(self):
         self.respostas = []
-        baixar = lambda cfg, file_id, destino: destino.write_bytes(novo_caso.png_exemplo()) and destino
+        baixar = lambda cfg, file_id, destino: destino.write_bytes(png_exemplo()) and destino
         for alvo, falso in (('defeitos.recepcao.telegram.baixar_arquivo', baixar),
-                            ('defeitos.recepcao.telegram.enviar', lambda cfg, texto: self.respostas.append(texto)),
-                            ('defeitos.recepcao.rodar', mock.Mock())):
+                            ('defeitos.recepcao.telegram.enviar', lambda cfg, texto: self.respostas.append(texto))):
             patcher = mock.patch(alvo, falso)
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def test_registra_com_dados_do_erp_e_roda_a_automacao(self):
+    def test_registra_com_dados_do_erp(self):
         with MacleSimulado() as m:
             cfg = config_teste(m.url)
-            novo_caso.resetar(cfg.entrada)
-            recepcao.atender(cfg, foto('1.1001.38'))
+            resetar(cfg.entrada)
+            registrado = recepcao.atender(cfg, foto('1.1001.38'))
             caso = {c['protocolo']: c for _, c, _ in casos.listar(cfg.entrada)}['6']
             self.assertEqual(caso['erp']['codigoDefeito'], '1.60000006')  # achou o defeito cadastrado no MACLE
             self.assertEqual(caso['loja'], '1')                           # a loja vem do defeito
             self.assertTrue((cfg.entrada / '6' / 'foto1.jpg').is_file())
             self.assertIn('✅ Caso #6 registrado', self.respostas[-1])
-            recepcao.rodar.assert_called_once()
+            self.assertEqual(registrado['protocolo'], '6')  # o main roda a rodada quando atender devolve o caso
 
     def test_sem_defeito_no_erp_nao_registra(self):
         with MacleSimulado() as m:
             cfg = config_teste(m.url)
-            recepcao.atender(cfg, foto('1.2001.41'))  # não há defeito do tamanho 41 no MACLE
+            self.assertIsNone(recepcao.atender(cfg, foto('1.2001.41')))  # não há defeito do tamanho 41 no MACLE
             self.assertEqual(casos.listar(cfg.entrada), [])
             self.assertIn('nenhum defeito em aberto', self.respostas[-1])
 

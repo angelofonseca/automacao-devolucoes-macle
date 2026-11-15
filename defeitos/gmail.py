@@ -2,7 +2,6 @@
 
 O Message-ID do rascunho é derivado dos protocolos do lote. Antes de gravar, a pasta de
 rascunhos é consultada por esse Message-ID: rodar de novo não cria rascunho duplicado.
-Sem senha de app no .env, o rascunho vira um arquivo .eml em saida/rascunhos/.
 """
 import hashlib
 import imaplib
@@ -22,7 +21,7 @@ TIPOS = {'.jpg': 'jpeg', '.jpeg': 'jpeg', '.png': 'png', '.webp': 'webp'}
 def montar(cfg, rascunho, anexos=()):
     """EmailMessage a partir do item `montarRascunho` da triagem."""
     msg = EmailMessage()
-    msg['From'] = cfg.gmail_user or 'automacao@localhost'
+    msg['From'] = cfg.gmail_user
     msg['To'] = ', '.join(rascunho['para'])
     msg['Subject'] = rascunho['assunto']
     msg['Date'] = formatdate(localtime=True)
@@ -42,12 +41,6 @@ def message_id(rascunho):
 
 def criar_rascunho(cfg, rascunho, anexos=(), ao_falhar=None):
     msg = montar(cfg, rascunho, anexos)
-    if not cfg.gmail_ativo:
-        pasta = cfg.saida / 'rascunhos'
-        pasta.mkdir(parents=True, exist_ok=True)
-        arquivo = pasta / f"{rascunho['chave']}.eml"
-        arquivo.write_bytes(bytes(msg))
-        return {'modo': 'arquivo', 'arquivo': str(arquivo), 'messageId': msg['Message-ID']}
     return com_retry(lambda: _gravar_imap(cfg, msg), SERVICO, tentativas=cfg.tentativas, ao_falhar=ao_falhar)
 
 
