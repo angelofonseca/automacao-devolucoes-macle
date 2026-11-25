@@ -12,7 +12,6 @@ import argparse
 import copy
 import html
 import json
-import os
 import secrets
 import threading
 import time
@@ -21,10 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from dotenv import load_dotenv
-
 RAIZ = Path(__file__).resolve().parent
-load_dotenv(RAIZ.parent / '.env')
 BASE = json.loads((RAIZ / 'dados.json').read_text(encoding='utf-8'))
 
 trava = threading.Lock()
@@ -32,13 +28,16 @@ estado = {}  # preenchido por reiniciar()
 
 
 def reiniciar(usuario=None, senha=None):
-    """Volta a base ao estado inicial (usado nos testes e ao subir o servidor)."""
+    """Volta a base ao estado inicial (usado nos testes e ao subir o servidor).
+
+    Sem usuário e senha, aceita qualquer login (a demo não precisa de credenciais do MACLE).
+    """
     with trava:
         estado.clear()
         estado.update(defeitos={k: {**v, 'situacao': 'Pendente', 'local': 'Loja'} for k, v in BASE['defeitos'].items()},
                       sessoes={},
                       falha={'status': None, 'atraso': 0, 'vezes': 0},
-                      usuario=usuario or os.environ.get('MACLE_USUARIO', 'demo'), senha=senha or os.environ.get('MACLE_SENHA', 'demo'))
+                      usuario=usuario, senha=senha)
 
 
 reiniciar()
@@ -217,9 +216,10 @@ class Handler(BaseHTTPRequestHandler):
         if rota == 'Login' and metodo == 'POST':
             if not sessao:
                 return self.responder(302, location='/Controle/')
-            ok = (form.get('action') == 'loggin' and form.get('empresa') in BASE['lojas']
-                  and secrets.compare_digest(form.get('usuario', ''), estado['usuario'])
-                  and secrets.compare_digest(form.get('senha', ''), estado['senha']))
+            credenciais = estado['usuario'] is None or (
+                secrets.compare_digest(form.get('usuario', ''), estado['usuario'])
+                and secrets.compare_digest(form.get('senha', ''), estado['senha']))
+            ok = form.get('action') == 'loggin' and form.get('empresa') in BASE['lojas'] and credenciais
             if not ok:
                 return self.responder(200, tela_login('Usuário ou senha inválidos'))
             sessao.update(logado=True, empresa=form['empresa'], filtro=None)
@@ -264,7 +264,7 @@ def main():
     p.add_argument('--porta', type=int, default=8080)
     a = p.parse_args()
     srv = ThreadingHTTPServer((a.host, a.porta), Handler)
-    print(f'[macle-sim] http://{a.host}:{a.porta}/Controle/  (usuário {estado["usuario"]})', flush=True)
+    print(f'[macle-sim] http://{a.host}:{a.porta}/Controle/  (loja 1, aceita qualquer login)', flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

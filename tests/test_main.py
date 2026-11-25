@@ -53,15 +53,15 @@ class TestOuvir(unittest.TestCase):
 class TestConfig(unittest.TestCase):
     def test_gmail_e_telegram_sao_obrigatorios(self):
         from defeitos import config
-        base = {'MACLE_USUARIO': 'u', 'MACLE_SENHA': 's', 'GMAIL_USER': 'g@x', 'GMAIL_APP_PASSWORD': 'p',
-                'TELEGRAM_BOT_TOKEN': 't', 'TELEGRAM_CHAT_ID': '1'}
+        base = {'GMAIL_USER': 'g@x', 'GMAIL_APP_PASSWORD': 'p', 'TELEGRAM_BOT_TOKEN': 't', 'TELEGRAM_CHAT_ID': '1'}
         for falta in ('GMAIL_USER', 'GMAIL_APP_PASSWORD', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'):
             env = {**base, falta: ''}
             with self.subTest(falta=falta), mock.patch.dict('os.environ', env), mock.patch('defeitos.config.load_dotenv'):
                 with self.assertRaisesRegex(config.ConfigInvalida, falta):
                     config.carregar()
         with mock.patch.dict('os.environ', base), mock.patch('defeitos.config.load_dotenv'):
-            self.assertEqual(config.carregar().gmail_user, 'g@x')
+            cfg = config.carregar()  # sem MACLE_USUARIO/MACLE_SENHA: o simulador aceita qualquer login
+        self.assertEqual((cfg.gmail_user, cfg.loja['numero'], cfg.macle_usuario), ('g@x', '1', ''))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,6 @@
-"""Configuração: segredos e valores simples no .env; lojas e servidores do MACLE em lojas.json.
+"""Configuração: segredos e valores simples no .env; a loja e o servidor do MACLE em loja.json.
+
+Cada instalação (bot + .env) é de uma loja só: ela só enxerga os próprios defeitos, itens e NFs.
 
 Nenhuma credencial, loja, servidor ou e-mail fica no código. Falta de variável ou arquivo inválido
 para a execução logo no início, com mensagem clara, em vez de quebrar no meio da rodada.
@@ -22,7 +24,7 @@ class Config:
     macle_usuario: str
     macle_senha: str
     macle_terminal: str
-    lojas: dict               # {'consulta', 'ordemLojas', 'lojas': {n: {'nome', 'razao', 'cnpj', 'servidor'}}}
+    loja: dict                # {'numero', 'nome', 'razao', 'cnpj', 'servidor'} da loja desta instalação
     gmail_user: str
     gmail_senha: str          # senha de app do Gmail (IMAP)
     telegram_token: str       # token do bot (Bot API)
@@ -36,19 +38,14 @@ class Config:
     log: Path
     segredos: tuple = field(default=(), repr=False)
 
-    def loja(self, numero):
-        loja = self.lojas['lojas'].get(str(numero))
-        if not loja:
-            raise ConfigInvalida(f'loja {numero} não está no {LOJAS_PADRAO.name}')
-        return loja
-
     def __repr__(self):  # nunca imprime senha nem token, nem por engano num log
-        return f"Config(lojas={sorted(self.lojas['lojas'])}, gmail={self.gmail_user!r})"
+        return f"Config(loja={self.loja['numero']}, gmail={self.gmail_user!r})"
 
 
-OBRIGATORIAS = ('MACLE_USUARIO', 'MACLE_SENHA', 'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID')
-LOJAS_PADRAO = RAIZ / 'data' / 'lojas.json'
-LOJAS_EXEMPLO = RAIZ / 'data' / 'lojas.exemplo.json'
+# O login do MACLE não está aqui: o simulador aceita qualquer um, e no MACLE real o erro de login já explica.
+OBRIGATORIAS = ('GMAIL_USER', 'GMAIL_APP_PASSWORD', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID')
+LOJA_PADRAO = RAIZ / 'data' / 'loja.json'
+LOJA_EXEMPLO = RAIZ / 'data' / 'loja.exemplo.json'
 
 
 def _numero(nome, padrao, tipo=int, minimo=0):
@@ -62,26 +59,20 @@ def _numero(nome, padrao, tipo=int, minimo=0):
     return valor
 
 
-def carregar_lojas(caminho):
-    """Lê e valida o lojas.json: cada loja com CNPJ e servidor http(s); consulta e ordem apontando para lojas existentes."""
+def carregar_loja(caminho):
+    """Lê e valida o loja.json: número da loja, CNPJ e servidor http(s) do MACLE."""
     try:
-        dados = json.loads(Path(caminho).read_text(encoding='utf-8'))
+        loja = json.loads(Path(caminho).read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as exc:
         raise ConfigInvalida(f'{caminho}: {exc}')
-    lojas = dados.get('lojas') or {}
-    if not lojas:
-        raise ConfigInvalida(f'{caminho}: nenhuma loja cadastrada')
-    for n, l in lojas.items():
-        if not str(l.get('servidor', '')).startswith(('http://', 'https://')):
-            raise ConfigInvalida(f'{caminho}: loja {n} sem "servidor" http(s)')
-        if len(''.join(c for c in l.get('cnpj', '') if c.isdigit())) != 14:
-            raise ConfigInvalida(f'{caminho}: loja {n} com CNPJ inválido')
-    dados.setdefault('consulta', next(iter(lojas)))
-    dados.setdefault('ordemLojas', list(lojas))
-    for n in [dados['consulta'], *dados['ordemLojas']]:
-        if str(n) not in lojas:
-            raise ConfigInvalida(f'{caminho}: loja {n} citada em consulta/ordemLojas não está em "lojas"')
-    return dados
+    loja['numero'] = str(loja.get('numero') or '').strip()
+    if not loja['numero'].isdigit():
+        raise ConfigInvalida(f'{caminho}: "numero" da loja (a empresa no MACLE) ausente ou inválido')
+    if not str(loja.get('servidor', '')).startswith(('http://', 'https://')):
+        raise ConfigInvalida(f'{caminho}: loja sem "servidor" http(s)')
+    if len(''.join(c for c in loja.get('cnpj', '') if c.isdigit())) != 14:
+        raise ConfigInvalida(f'{caminho}: loja com CNPJ inválido')
+    return loja
 
 
 def carregar(arquivo_env=None):
@@ -93,18 +84,18 @@ def carregar(arquivo_env=None):
     if faltando:
         raise ConfigInvalida('Variáveis faltando no .env: ' + ', '.join(faltando) + ' (veja o .env.example)')
 
-    arquivo_lojas = Path(env('LOJAS_ARQUIVO') or LOJAS_PADRAO)
-    if not arquivo_lojas.is_absolute():
-        arquivo_lojas = RAIZ / arquivo_lojas
-    if not arquivo_lojas.exists():
-        arquivo_lojas = LOJAS_EXEMPLO  # sem configuração própria: roda contra o simulador
+    arquivo_loja = Path(env('LOJA_ARQUIVO') or LOJA_PADRAO)
+    if not arquivo_loja.is_absolute():
+        arquivo_loja = RAIZ / arquivo_loja
+    if not arquivo_loja.exists():
+        arquivo_loja = LOJA_EXEMPLO  # sem configuração própria: roda contra o simulador
 
     gmail_senha = ''.join(env('GMAIL_APP_PASSWORD').split())  # o Google mostra a senha de app com espaços
     return Config(
         macle_usuario=env('MACLE_USUARIO'),
         macle_senha=env('MACLE_SENHA'),
         macle_terminal=env('MACLE_TERMINAL') or '001',
-        lojas=carregar_lojas(arquivo_lojas),
+        loja=carregar_loja(arquivo_loja),
         gmail_user=env('GMAIL_USER'),
         gmail_senha=gmail_senha,
         telegram_token=env('TELEGRAM_BOT_TOKEN'),

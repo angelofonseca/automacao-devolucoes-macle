@@ -35,7 +35,7 @@ class TestTelasReais(unittest.TestCase):
         self.assertTrue(doc['emissao'] and doc['cnpjFornecedor'] and doc['itemNaNota'])
         self.assertIsNotNone(doc['custoUnitario'])
         self.assertTrue(telas.ler_lista_defeitos(self.ler('lista.html')))
-        self.assertEqual(telas.campos_filtro(self.ler('filtro.html'), d['item'], date(2026, 11, 9))['action'], 'setFilterDefeito')
+        self.assertEqual(telas.campos_filtro(self.ler('filtro.html'), d['item'], date(2026, 11, 9), d['item'].split('.')[0])['action'], 'setFilterDefeito')
 
 
 if __name__ == '__main__':

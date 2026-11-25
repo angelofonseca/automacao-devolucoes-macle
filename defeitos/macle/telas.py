@@ -115,8 +115,8 @@ def periodo_cadastro(hoje: date):
     return ini.strftime('%d/%m/%Y'), fim.strftime('%d/%m/%Y')
 
 
-def campos_filtro(pagina, item, hoje):
-    """Campos do filtro de defeitos como o botão OK enviaria, com: todas as empresas, o item e os últimos 6 meses."""
+def campos_filtro(pagina, item, hoje, empresa):
+    """Campos do filtro de defeitos como o botão OK enviaria, com: só a empresa (loja), o item e os últimos 6 meses."""
     from .html import campos_form
     todas = re.search(r"id=[\"']?empTodas[^>]*setEmpresas\('([\d,]+)'\)", pagina, re.I)
     try:
@@ -125,8 +125,10 @@ def campos_filtro(pagina, item, hoje):
         c = None
     if c is None or not todas:
         raise TelaDesconhecida('tela de filtro de defeitos não reconhecida')
+    if str(empresa) not in todas.group(1).split(','):
+        raise TelaDesconhecida(f'a loja {empresa} não aparece no filtro de defeitos do MACLE')
     ini, fim = periodo_cadastro(hoje)
-    c.update(action='setFilterDefeito', empresas=todas.group(1), codItem=item, dataCadIni=ini, dataCadFim=fim)
+    c.update(action='setFilterDefeito', empresas=str(empresa), codItem=item, dataCadIni=ini, dataCadFim=fim)
     c.pop('pendCli', None)
     return c
 

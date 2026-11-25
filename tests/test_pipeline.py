@@ -22,25 +22,29 @@ class TestPipeline(unittest.TestCase):
             resetar(cfg.entrada)
             r = pipeline.executar(cfg, HOJE, AGORA)
             self.assertTrue(r['ok'], r['falhas'])
-            # 1 e 2: Aurora loja 1 = R$ 219,80 < R$ 300 -> aguardando; 3 e 4: Passo Firme loja 6 = 3 pares -> e-mail;
-            # 5: Trilha sem e-mail -> decisão
-            self.assertEqual(situacao(cfg), {'1': 'aguardando_lote', '2': 'aguardando_lote', '3': 'aguardando_aprovacao',
+            # 1: Aurora R$ 129,90 < R$ 300 -> aguardando; 2: sandália Aurora, NF de 15/08/2025 (12 meses) -> trava;
+            # 3 e 4: Passo Firme = 3 pares -> e-mail; 5: Trilha sem e-mail -> trava
+            self.assertEqual(situacao(cfg), {'1': 'aguardando_lote', '2': 'aguardando_decisao', '3': 'aguardando_aprovacao',
                                              '4': 'aguardando_aprovacao', '5': 'aguardando_decisao'})
+            bloqueio = {b['protocolo']: b['motivo'] for b in r['bloqueados']}
+            self.assertIn('fora do prazo', bloqueio['2'])
             eml = fora['rascunhos'][0]
             self.assertEqual((eml['From'], eml['To']), ('loja@teste.example', 'qualidade@passofirme.example'))
             self.assertIn('NF ORIGEM: 7720', eml.get_body().get_content())
+            self.assertIn('Loja Centro', eml.get_body().get_content())
             self.assertEqual(len(list(eml.iter_attachments())), 2)  # uma foto por caso
             self.assertIn('✉️ Rascunho pronto para revisar: Passo Firme', fora['telegram'][0])
 
-            # par novo fecha o lote da Aurora (assunto "fora do prazo" por causa do caso 2)
+            # dois pares novos fecham o lote da Aurora: 3 x R$ 129,90 = R$ 389,70
             criar_caso(cfg.entrada, '1', '1.1001.38', 1, 'Salto soltando')
+            criar_caso(cfg.entrada, '1', '1.1001.36', 1, 'Salto quebrado')
             r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertEqual(r['rascunhos'][0]['protocolos'], ['1', '2', '6'])
-            self.assertTrue(r['rascunhos'][0]['assunto'].endswith('fora do prazo'))
+            self.assertEqual(r['rascunhos'][0]['protocolos'], ['1', '6', '7'])
+            self.assertEqual((r['rascunhos'][0]['total'], r['rascunhos'][0]['assunto']), (389.7, 'Produtos com defeito'))
 
             # rascunho criado é o fim: a rodada seguinte não mexe nos casos e não avisa
             r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertEqual({situacao(cfg)[p] for p in ('1', '2', '3', '4', '6')}, {'aguardando_aprovacao'})
+            self.assertEqual({situacao(cfg)[p] for p in ('1', '3', '4', '6', '7')}, {'aguardando_aprovacao'})
             self.assertEqual((r['rascunhos'], r['avisou']), ([], False))
             self.assertEqual(len(fora['rascunhos']), 2)
 

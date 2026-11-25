@@ -53,18 +53,18 @@ class TestListaFechada(unittest.TestCase):
 @mock.patch('defeitos.resiliencia.time.sleep', lambda s: None)
 class TestSessaoMacle(unittest.TestCase):
     def sessao(self, url, senha='senha-teste', timeout=2):
-        return SessaoMacle(url, '6', '001', 'teste', senha, timeout=timeout)
+        return SessaoMacle(url, '1', '001', 'teste', senha, timeout=timeout)
 
     def test_consulta_completa(self):
         with MacleSimulado() as m:
-            p = consulta.consultar(self.sessao(m.url), '1.1001.37', ['1'], HOJE)
+            p = consulta.consultar(self.sessao(m.url), '1.1001.37', '1', HOJE)
         self.assertEqual((p['codigoDefeito'], p['marca'], p['custo']), ('1.60000001', 'AURORA', 129.9))
         self.assertEqual(p['nf']['cnpjFornecedor'], '00.100.200/0001-10')
         self.assertEqual(p['nf']['emissao'], '10/03/2026')
 
     def test_codigo_do_defeito_direto(self):
         with MacleSimulado() as m:
-            p = consulta.consultar(self.sessao(m.url), '6.60000004', ['6'], HOJE)
+            p = consulta.consultar(self.sessao(m.url), '1.60000004', '1', HOJE)
         self.assertEqual((p['item'], p['tamanho'], p['quantidade']), ('1.2001', '42', 2))
 
     def test_503_duas_vezes_e_depois_responde(self):
@@ -72,13 +72,13 @@ class TestSessaoMacle(unittest.TestCase):
             s = self.sessao(m.url)
             s.entrar()
             m.falhar(status=503, vezes=2)
-            self.assertEqual(consulta.consultar(s, '1.1001.37', ['1'], HOJE)['marca'], 'AURORA')
+            self.assertEqual(consulta.consultar(s, '1.1001.37', '1', HOJE)['marca'], 'AURORA')
 
     def test_macle_fora_do_ar(self):
         with MacleSimulado() as m:
             m.falhar(status=500, vezes=50)
             with self.assertRaises(ErroIntegracao) as ctx:
-                consulta.consultar(self.sessao(m.url), '1.1001.37', ['1'], HOJE)
+                consulta.consultar(self.sessao(m.url), '1.1001.37', '1', HOJE)
         self.assertTrue(ctx.exception.temporaria)
 
     def test_timeout_conta_como_temporario(self):
@@ -86,7 +86,7 @@ class TestSessaoMacle(unittest.TestCase):
             s = self.sessao(m.url, timeout=1)
             s.entrar()
             m.falhar(atraso=1.5, vezes=1)
-            self.assertEqual(consulta.consultar(s, '1.1001.37', ['1'], HOJE)['marca'], 'AURORA')
+            self.assertEqual(consulta.consultar(s, '1.1001.37', '1', HOJE)['marca'], 'AURORA')
 
     def test_senha_errada_nao_repete(self):
         with MacleSimulado() as m:
@@ -99,15 +99,27 @@ class TestSessaoMacle(unittest.TestCase):
             s = self.sessao(m.url)
             s.entrar()
             servidor.estado['sessoes'].clear()
-            self.assertEqual(consulta.consultar(s, '1.1001.37', ['1'], HOJE)['marca'], 'AURORA')
+            self.assertEqual(consulta.consultar(s, '1.1001.37', '1', HOJE)['marca'], 'AURORA')
 
     def test_produto_sem_defeito_e_codigo_invalido(self):
         with MacleSimulado() as m:
             s = self.sessao(m.url)
             with self.assertRaises(consulta.ProdutoNaoEncontrado):
-                consulta.consultar(s, '1.1001.40', ['1'], HOJE)  # item existe, sem defeito desse tamanho
+                consulta.consultar(s, '1.1001.40', '1', HOJE)  # item existe, sem defeito desse tamanho
             with self.assertRaises(consulta.ProdutoNaoEncontrado):
-                consulta.consultar(s, 'abc', ['1'], HOJE)
+                consulta.consultar(s, 'abc', '1', HOJE)
+
+    def test_codigo_de_outra_loja_e_recusado(self):
+        with MacleSimulado() as m:
+            s = self.sessao(m.url)
+            for codigo in ('6.60000004', '6.2001.42'):
+                with self.assertRaisesRegex(consulta.ProdutoNaoEncontrado, 'é da loja 6; esta automação é da loja 1'):
+                    consulta.consultar(s, codigo, '1', HOJE)
+
+    def test_simulador_sem_credenciais_aceita_qualquer_login(self):
+        with MacleSimulado() as m:
+            servidor.reiniciar()
+            SessaoMacle(m.url, '1', '001', '', '', timeout=2).entrar()
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@
 
 # Dados gerados em execução (casos, rascunhos, log)
 data/entrada/
-data/lojas.json
+data/loja.json
 saida/
 logs/
 

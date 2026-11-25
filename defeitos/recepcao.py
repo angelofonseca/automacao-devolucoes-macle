@@ -2,7 +2,8 @@
 
 Quem ouve o bot é o defeitos.main. Para cada foto que chega do chat autorizado (TELEGRAM_CHAT_ID):
   1. lê o código na legenda: item com tamanho (ex.: 1.1001.38) ou o do defeito no MACLE (ex.: 1.60000006);
-  2. consulta o MACLE: precisa haver um defeito em aberto desse item e tamanho, cadastrado pela loja;
+  2. consulta o MACLE: precisa haver um defeito em aberto desse item e tamanho, cadastrado pela loja
+     desta instalação (código de outra loja é recusado);
   3. registra o caso com a foto e os dados do ERP (loja, quantidade, descrição do defeito);
   4. responde no chat; o main roda em seguida uma rodada (triagem, rascunho se o lote fechou, resumo).
 """
@@ -42,9 +43,9 @@ def registrar_foto(cfg, codigo, descricao, file_id, ext, hoje=None):
     Levanta consulta.ProdutoNaoEncontrado quando não há defeito em aberto para o código.
     """
     usados = {c['erp']['codigoDefeito'] for _, c, erros in repo.listar(cfg.entrada) if not erros and c.get('erp')}
-    sessao = pipeline.sessao_loja(cfg, cfg.lojas['consulta'])
-    erp = consulta.consultar(sessao, codigo, cfg.lojas['ordemLojas'], hoje, ignorar=usados)
-    loja = erp['codigoDefeito'].split('.')[0]  # o defeito fica na empresa (loja) que recebeu o par
+    sessao = pipeline.sessao_loja(cfg)
+    loja = cfg.loja['numero']  # cada instalação é de uma loja: só os defeitos dela
+    erp = consulta.consultar(sessao, codigo, loja, hoje, ignorar=usados)
     with tempfile.TemporaryDirectory() as tmp:
         foto = telegram.baixar_arquivo(cfg, file_id, Path(tmp) / f'foto{ext}')
         caso = repo.criar(cfg.entrada, loja, codigo, erp['quantidade'],

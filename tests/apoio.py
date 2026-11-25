@@ -34,15 +34,14 @@ class MacleSimulado:
         self.http.server_close()
 
 
-def lojas(url):
-    return {'consulta': '6', 'ordemLojas': ['6', '1'], 'lojas': {
-        '1': {'nome': 'Centro', 'razao': 'Calçados Exemplo Ltda - Loja Centro', 'cnpj': '00.000.111/0001-01', 'servidor': url},
-        '6': {'nome': 'Shopping', 'razao': 'Calçados Exemplo Ltda - Loja Shopping', 'cnpj': '00.000.111/0006-06', 'servidor': url}}}
+def loja(url):
+    return {'numero': '1', 'nome': 'Centro', 'razao': 'Calçados Exemplo Ltda - Loja Centro', 'cnpj': '00.000.111/0001-01',
+            'servidor': url}
 
 
 def config_teste(url, pasta=None, **extra):
     pasta = Path(pasta or tempfile.mkdtemp())
-    valores = dict(macle_usuario='teste', macle_senha='senha-teste', macle_terminal='001', lojas=lojas(url),
+    valores = dict(macle_usuario='teste', macle_senha='senha-teste', macle_terminal='001', loja=loja(url),
                    gmail_user='loja@teste.example', gmail_senha='senha-app-teste', telegram_token='123:TOKEN-TESTE',
                    telegram_chat_id='1', intervalo_min=60, timeout=2, tentativas=3, entrada=pasta / 'entrada',
                    fornecedores=RAIZ / 'data' / 'fornecedores.json', saida=pasta / 'saida', log=pasta / 'logs' / 'execucoes.jsonl')

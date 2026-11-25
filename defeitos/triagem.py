@@ -3,11 +3,12 @@
 Entrada: casos já enriquecidos com os dados do ERP + cadastro de fornecedores (JSON).
 Saída: um plano em JSON (dict) — nada é gravado aqui; o pipeline aplica o plano.
 
-Regras:
+Regras (todos os casos são da loja desta instalação):
 1. Fornecedor achado pelo CNPJ da NF (8 primeiros dígitos). Fora do cadastro -> trava.
 2. Fornecedor sem e-mail de contato -> trava (não há para quem escrever).
-3. Fora do prazo -> NÃO trava: o e-mail sai com "fora do prazo" no assunto e a fábrica decide.
-4. Casos da mesma loja + mesmo fornecedor formam um lote. O rascunho só sai quando o lote
+3. Fora do prazo de garantia -> trava. Vale também para caso que esperava o lote fechar
+   e venceu enquanto esperava: a triagem roda de novo a cada rodada.
+4. Casos do mesmo fornecedor formam um lote. O rascunho só sai quando o lote
    atinge o mínimo em R$ (minimoLote) e em pares (minimoPares) do fornecedor.
 """
 import re
@@ -36,7 +37,7 @@ def avaliar(caso, fornecedores, hoje):
         trava.append(f"{f['nome']}: sem e-mail de contato cadastrado")
     p = regra_prazo.avaliar(f.get('prazo'), nf['emissao'], hoje)
     if p['situacao'] == 'fora':
-        avisos.append(f"fora do prazo ({p['motivo']})")
+        trava.append(f"fora do prazo ({p['motivo']})")
     elif p['situacao'] == 'indefinido':
         avisos.append(f"prazo indefinido ({p['motivo']})")
     return {'fornecedor': f, 'trava': trava, 'avisos': avisos, 'prazo': p}
@@ -57,12 +58,11 @@ def corpo_rascunho(itens, loja, agora):
     return '\n'.join(linhas)
 
 
-def planejar(casos, cadastro, lojas, hoje, agora):
+def planejar(casos, cadastro, loja, hoje, agora):
     """Agrupa os casos em lotes e decide o destino de cada um.
 
     casos: lista de dicts (caso.json) já com o campo 'erp'.
-    cadastro: conteúdo de fornecedores.json ({'fornecedores': [...]}); lojas: {número: {'razao', 'cnpj'}} do lojas.json.
-    O lote é da loja da NF de compra (é ela que emite a NFD), não da loja que recebeu o par.
+    cadastro: conteúdo de fornecedores.json ({'fornecedores': [...]}); loja: {'numero', 'razao', 'cnpj'} do loja.json.
     """
     fornecedores = cadastro['fornecedores']
     bloquear, aguardar, rascunhos = [], [], []
@@ -74,13 +74,10 @@ def planejar(casos, cadastro, lojas, hoje, agora):
             bloquear.append({'protocolo': c['protocolo'], 'motivo': '; '.join(av['trava'])})
             continue
         f = av['fornecedor']
-        loja = c['erp']['nf'].get('loja') or c['loja']
-        chave = f"L{loja}-{f['id']}"   # lote = mesma loja + mesmo fornecedor
-        lote = lotes.setdefault(chave, {'chave': chave, 'loja': loja, 'fornecedor': f, 'casos': [], 'avisos': [], 'fora': []})
+        chave = f"L{loja['numero']}-{f['id']}"   # lote = mesmo fornecedor (a loja é sempre a desta instalação)
+        lote = lotes.setdefault(chave, {'chave': chave, 'loja': loja['numero'], 'fornecedor': f, 'casos': [], 'avisos': []})
         lote['casos'].append(c)
         lote['avisos'] += [f"#{c['protocolo']}: {a}" for a in av['avisos']]
-        if av['prazo'] and av['prazo']['situacao'] == 'fora':
-            lote['fora'].append(c['protocolo'])
 
     for lote in lotes.values():
         f = lote['fornecedor']
@@ -98,8 +95,8 @@ def planejar(casos, cadastro, lojas, hoje, agora):
                   'fotos': c.get('fotos', [])} for c in lote['casos']]
         rascunhos.append({
             'chave': lote['chave'], 'fornecedor': f['nome'], 'loja': lote['loja'], 'para': [f['contato']['email']],
-            'assunto': ('Produto com defeito' if pares == 1 else 'Produtos com defeito') + (' - fora do prazo' if lote['fora'] else ''),
-            'corpo': corpo_rascunho(itens, lojas.get(lote['loja']), agora),
+            'assunto': 'Produto com defeito' if pares == 1 else 'Produtos com defeito',
+            'corpo': corpo_rascunho(itens, loja, agora),
             'protocolos': protocolos, 'total': total, 'pares': pares, 'itens': itens, 'avisos': lote['avisos'],
         })
 

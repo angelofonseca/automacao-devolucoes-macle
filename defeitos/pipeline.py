@@ -22,9 +22,10 @@ def brl(valor):
     return f'R$ {valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
-def sessao_loja(cfg, loja, ao_falhar=None):
-    """Sessão no servidor do MACLE da loja, logada com a empresa = loja."""
-    return SessaoMacle(cfg.loja(loja)['servidor'], loja, cfg.macle_terminal, cfg.macle_usuario, cfg.macle_senha,
+def sessao_loja(cfg, ao_falhar=None):
+    """Sessão no servidor do MACLE da loja desta instalação, logada com a empresa = loja."""
+    loja = cfg.loja
+    return SessaoMacle(loja['servidor'], loja['numero'], cfg.macle_terminal, cfg.macle_usuario, cfg.macle_senha,
                        timeout=cfg.timeout, tentativas=cfg.tentativas, ao_falhar=ao_falhar)
 
 
@@ -65,8 +66,8 @@ def executar(cfg, hoje=None, agora=None):
                 continue  # MACLE já falhou nesta rodada: não insiste caso a caso
             usados = {c['erp']['codigoDefeito'] for c in todos if c.get('erp') and c is not caso}
             try:
-                sessao = sessao or sessao_loja(cfg, cfg.lojas['consulta'], log_tentativa)
-                caso['erp'] = consulta.consultar(sessao, caso['codigo'], cfg.lojas['ordemLojas'], hoje, usados)
+                sessao = sessao or sessao_loja(cfg, log_tentativa)
+                caso['erp'] = consulta.consultar(sessao, caso['codigo'], cfg.loja['numero'], hoje, usados)
                 caso['quantidade'] = caso['erp']['quantidade']  # o MACLE é a fonte da quantidade do defeito
                 repo.gravar(pasta, caso)
             except (consulta.ProdutoNaoEncontrado, TelaDesconhecida) as exc:
@@ -82,7 +83,7 @@ def executar(cfg, hoje=None, agora=None):
         r['adiados'] = sum(1 for _, c in pendentes if 'erp' not in c)
 
     # 3. Triagem
-    plano = triagem.planejar([c for _, c in prontos.values()], cadastro, cfg.lojas['lojas'], hoje, agora)
+    plano = triagem.planejar([c for _, c in prontos.values()], cadastro, cfg.loja, hoje, agora)
 
     # 4. Aplicação do plano
     for b in plano['bloquear']:

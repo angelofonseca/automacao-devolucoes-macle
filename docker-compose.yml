@@ -1,5 +1,5 @@
 # Demo completa em containers: simulador do MACLE + automação.
-# Para usar o MACLE real, remova o serviço macle-sim e aponte LOJAS_ARQUIVO para o seu lojas.json.
+# Para usar o MACLE real, remova o serviço macle-sim e aponte LOJA_ARQUIVO para o seu loja.json.
 services:
   macle-sim:
     build: .
@@ -12,7 +12,7 @@ services:
     build: .
     env_file: .env
     environment:
-      LOJAS_ARQUIVO: data/lojas.docker.json   # servidores apontando para o serviço macle-sim
+      LOJA_ARQUIVO: data/loja.docker.json   # servidor apontando para o serviço macle-sim
     depends_on:
       - macle-sim
     volumes:

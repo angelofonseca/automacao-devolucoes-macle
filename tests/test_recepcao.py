@@ -41,7 +41,7 @@ class TestAtender(unittest.TestCase):
             registrado = recepcao.atender(cfg, foto('1.1001.38'))
             caso = {c['protocolo']: c for _, c, _ in casos.listar(cfg.entrada)}['6']
             self.assertEqual(caso['erp']['codigoDefeito'], '1.60000006')  # achou o defeito cadastrado no MACLE
-            self.assertEqual(caso['loja'], '1')                           # a loja vem do defeito
+            self.assertEqual(caso['loja'], '1')                           # a loja desta instalação
             self.assertTrue((cfg.entrada / '6' / 'foto1.jpg').is_file())
             self.assertIn('✅ Caso #6 registrado', self.respostas[-1])
             self.assertEqual(registrado['protocolo'], '6')  # o main roda a rodada quando atender devolve o caso
@@ -52,6 +52,13 @@ class TestAtender(unittest.TestCase):
             self.assertIsNone(recepcao.atender(cfg, foto('1.2001.41')))  # não há defeito do tamanho 41 no MACLE
             self.assertEqual(casos.listar(cfg.entrada), [])
             self.assertIn('nenhum defeito em aberto', self.respostas[-1])
+
+    def test_codigo_de_outra_loja_nao_registra(self):
+        with MacleSimulado() as m:
+            cfg = config_teste(m.url)
+            self.assertIsNone(recepcao.atender(cfg, foto('6.60000004')))
+            self.assertEqual(casos.listar(cfg.entrada), [])
+            self.assertIn('é da loja 6; esta automação é da loja 1', self.respostas[-1])
 
     def test_mensagem_sem_codigo_recebe_ajuda(self):
         cfg = config_teste('http://127.0.0.1:9/Controle/')
