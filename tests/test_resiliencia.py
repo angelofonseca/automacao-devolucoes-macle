@@ -65,7 +65,22 @@ class TestSessaoMacle(unittest.TestCase):
     def test_codigo_do_defeito_direto(self):
         with MacleSimulado() as m:
             p = consulta.consultar(self.sessao(m.url), '1.60000004', '1', HOJE)
-        self.assertEqual((p['item'], p['tamanho'], p['quantidade']), ('1.2001', '42', 2))
+        self.assertEqual((p['item'], p['tamanho'], p['par'], p['pares']), ('1.2001', '42', 1, 2))
+
+    def test_defeito_de_dois_pares_recebe_duas_fotos(self):
+        with MacleSimulado() as m:
+            s = self.sessao(m.url)
+            usados = {}
+            for par in (1, 2):  # duas fotos do 1.2001.42: o mesmo defeito, um par cada
+                p = consulta.consultar(s, '1.2001.42', '1', HOJE, usados)
+                self.assertEqual((p['codigoDefeito'], p['par'], p['pares']), ('1.60000004', par, 2))
+                usados[p['codigoDefeito']] = par
+            with self.assertRaisesRegex(consulta.ProdutoNaoEncontrado, 'todos os pares já registrados: 1.60000004'):
+                consulta.consultar(s, '1.2001.42', '1', HOJE, usados)
+            with self.assertRaisesRegex(consulta.ProdutoNaoEncontrado, 'já tem os 2 pares registrados'):
+                consulta.consultar(s, '1.60000004', '1', HOJE, usados)
+            with self.assertRaisesRegex(consulta.ProdutoNaoEncontrado, 'já tem o par registrado'):
+                consulta.consultar(s, '1.60000003', '1', HOJE, {'1.60000003': 1})
 
     def test_503_duas_vezes_e_depois_responde(self):
         with MacleSimulado() as m:

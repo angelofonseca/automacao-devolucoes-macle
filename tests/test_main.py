@@ -34,13 +34,19 @@ class TestOuvir(unittest.TestCase):
         with MacleSimulado() as m, integracoes_falsas() as fora:
             cfg = config_teste(m.url)
             rodar = self.ouvir(cfg, [[update(10, 1, '1.2001.40'), update(11, 999, '1.2001.42')],
-                                     [update(12, 1, '1.2001.42 Palmilha soltando')]])
+                                     [update(12, 1, '1.2001.42 Palmilha soltando')],
+                                     [update(13, 1, '1.2001.42 Costura do bico')]])
             todos = {c['protocolo']: c for _, c, _ in casos.listar(cfg.entrada)}
-        self.assertEqual([c['codigo'] for c in todos.values()], ['1.2001.40', '1.2001.42'])  # o chat 999 foi ignorado
-        self.assertEqual(rodar.call_count, 3)  # ao subir + uma por caso registrado
-        self.assertEqual(todos['2']['status'], 'aguardando_aprovacao')  # 3 pares da Passo Firme: rascunho
+        # o chat 999 foi ignorado; as duas fotos do 1.2001.42 são os dois pares do defeito 1.60000004
+        self.assertEqual([(c['codigo'], c['erp']['codigoDefeito'], c['defeito']) for c in todos.values()],
+                         [('1.2001.40', '1.60000003', 'Costura aberta'), ('1.2001.42', '1.60000004', 'Palmilha soltando'),
+                          ('1.2001.42', '1.60000004', 'Costura do bico')])
+        self.assertEqual(rodar.call_count, 4)  # ao subir + uma por caso registrado
+        self.assertEqual({c['status'] for c in todos.values()}, {'aguardando_aprovacao'})  # 3 pares: rascunho
         self.assertEqual(len(fora['rascunhos']), 1)
-        self.assertEqual((cfg.saida / 'telegram_offset.txt').read_text(), '13')
+        self.assertEqual(len(list(fora['rascunhos'][0].iter_attachments())), 3)  # uma foto por par
+        self.assertIn('(par 2 de 2)', fora['telegram'][-2])
+        self.assertEqual((cfg.saida / 'telegram_offset.txt').read_text(), '14')
 
     def test_rodada_agendada_quando_passa_o_intervalo(self):
         relogio = [0]

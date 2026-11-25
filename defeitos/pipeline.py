@@ -8,6 +8,7 @@
 5. Resumo no Telegram, só quando houve novidade ou falha.
 """
 import json
+from collections import Counter
 from datetime import date, datetime
 
 from . import casos as repo
@@ -64,11 +65,10 @@ def executar(cfg, hoje=None, agora=None):
         if 'erp' not in caso:
             if macle_fora:
                 continue  # MACLE já falhou nesta rodada: não insiste caso a caso
-            usados = {c['erp']['codigoDefeito'] for c in todos if c.get('erp') and c is not caso}
+            usados = Counter(c['erp']['codigoDefeito'] for c in todos if c.get('erp') and c is not caso)
             try:
                 sessao = sessao or sessao_loja(cfg, log_tentativa)
                 caso['erp'] = consulta.consultar(sessao, caso['codigo'], cfg.loja['numero'], hoje, usados)
-                caso['quantidade'] = caso['erp']['quantidade']  # o MACLE é a fonte da quantidade do defeito
                 repo.gravar(pasta, caso)
             except (consulta.ProdutoNaoEncontrado, TelaDesconhecida) as exc:
                 mudar(pasta, caso, 'aguardando_decisao', str(exc), bloqueio=str(exc))

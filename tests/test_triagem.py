@@ -16,8 +16,8 @@ CADASTRO = {
 HOJE, AGORA = date(2026, 11, 6), datetime(2026, 11, 6, 9, 0)
 
 
-def caso(protocolo, cnpj, custo, emissao='01/06/2026', loja='1', quantidade=1):
-    return {'protocolo': protocolo, 'loja': loja, 'codigo': '1.1.1', 'quantidade': quantidade, 'defeito': 'sola',
+def caso(protocolo, cnpj, custo, emissao='01/06/2026', loja='1'):
+    return {'protocolo': protocolo, 'loja': loja, 'codigo': '1.1.1', 'defeito': 'sola',
             'status': 'novo', 'fotos': [],
             'erp': {'referencia': 'REF', 'tamanho': '38', 'custo': custo,
                     'nf': {'numero': '10', 'emissao': emissao, 'cnpjFornecedor': cnpj}}}
@@ -39,11 +39,15 @@ class TestTriagem(unittest.TestCase):
         self.assertIn('Seguem 2 pares', r['corpo'])
         self.assertTrue(r['corpo'].startswith('Bom dia'))
 
-    def test_minimo_de_pares(self):
-        p = triagem.planejar([caso('1', '22.222.222/0001-22', 50.0, quantidade=2)], CADASTRO, LOJA, HOJE, AGORA)
+    def test_minimo_de_pares_conta_um_par_por_caso(self):
+        pares = [caso(str(n), '22.222.222/0001-22', 50.0) for n in (1, 2, 3)]
+        p = triagem.planejar(pares[:2], CADASTRO, LOJA, HOJE, AGORA)
         self.assertEqual(p['aguardarLote'][0]['pares'], 2)
-        p = triagem.planejar([caso('1', '22.222.222/0001-22', 50.0, quantidade=3)], CADASTRO, LOJA, HOJE, AGORA)
-        self.assertEqual(p['montarRascunho'][0]['pares'], 3)
+        p = triagem.planejar(pares, CADASTRO, LOJA, HOJE, AGORA)
+        r = p['montarRascunho'][0]
+        self.assertEqual((r['pares'], r['total']), (3, 150.0))
+        self.assertEqual(r['corpo'].count('REF: REF'), 3)  # um bloco por par
+        self.assertNotIn('QTD', r['corpo'])
 
     def test_fora_do_prazo_trava(self):
         p = triagem.planejar([caso('1', '11.111.111/0001-11', 300.0, emissao='01/01/2025')], CADASTRO, LOJA, HOJE, AGORA)

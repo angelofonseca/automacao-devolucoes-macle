@@ -58,12 +58,12 @@ def png_exemplo(largura=120, altura=80, cor=(200, 60, 60)):
             + bloco(b'IDAT', zlib.compress(linha * altura)) + bloco(b'IEND', b''))
 
 
-def criar_caso(entrada, loja, codigo, quantidade, defeito):
+def criar_caso(entrada, loja, codigo, defeito):
     """casos.criar com uma foto de exemplo (no uso real, a foto vem do Telegram)."""
     with tempfile.TemporaryDirectory() as tmp:
         foto = Path(tmp) / 'foto.png'
         foto.write_bytes(png_exemplo())
-        return casos.criar(entrada, loja, codigo, quantidade, defeito, foto)
+        return casos.criar(entrada, loja, codigo, defeito, foto)
 
 
 def resetar(entrada):

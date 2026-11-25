@@ -45,14 +45,13 @@ def avaliar(caso, fornecedores, hoje):
 
 def corpo_rascunho(itens, loja, agora):
     """Texto do e-mail: saudação, loja, um bloco por item, fotos em anexo."""
-    pares = sum(i['quantidade'] for i in itens)
+    pares = len(itens)  # cada caso é um par
     linhas = [('Bom dia' if agora.hour < 12 else 'Boa tarde') + ', tudo bem?',
               'Segue um par com defeito:' if pares == 1 else f'Seguem {pares} pares com defeito:', '']
     if loja:
         linhas += [loja['razao'], f"CNPJ {loja['cnpj']}", '']
     for i in itens:
         linhas += [f"REF: {i['referencia']}", f"NUMERAÇÃO: {i['tamanho']}",
-                   f"QTD: {i['quantidade']} {'par' if i['quantidade'] == 1 else 'pares'}",
                    f"NF ORIGEM: {i['nf']}", f"DEFEITO: {i['defeito']}", '']
     linhas += ['Fotos em anexo.', '', 'Atenciosamente,']
     return '\n'.join(linhas)
@@ -81,8 +80,8 @@ def planejar(casos, cadastro, loja, hoje, agora):
 
     for lote in lotes.values():
         f = lote['fornecedor']
-        total = round(sum(c['erp']['custo'] * c['quantidade'] for c in lote['casos']), 2)
-        pares = sum(c['quantidade'] for c in lote['casos'])
+        total = round(sum(c['erp']['custo'] for c in lote['casos']), 2)
+        pares = len(lote['casos'])  # cada caso é um par
         minimo, minimo_pares = f.get('minimoLote') or 0, f.get('minimoPares') or 0
         protocolos = [c['protocolo'] for c in lote['casos']]
         if total < minimo or pares < minimo_pares:
@@ -91,7 +90,7 @@ def planejar(casos, cadastro, loja, hoje, agora):
                              'pares': pares, 'minimoPares': minimo_pares})
             continue
         itens = [{'protocolo': c['protocolo'], 'referencia': c['erp']['referencia'], 'tamanho': c['erp']['tamanho'],
-                  'quantidade': c['quantidade'], 'nf': c['erp']['nf']['numero'], 'defeito': c['defeito'],
+                  'nf': c['erp']['nf']['numero'], 'defeito': c['defeito'],
                   'fotos': c.get('fotos', [])} for c in lote['casos']]
         rascunhos.append({
             'chave': lote['chave'], 'fornecedor': f['nome'], 'loja': lote['loja'], 'para': [f['contato']['email']],

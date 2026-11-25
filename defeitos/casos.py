@@ -18,7 +18,7 @@ TRANSICOES = {
 }
 EM_TRIAGEM = {'novo', 'aguardando_lote'}
 FOTOS = ('.jpg', '.jpeg', '.png', '.webp')
-CAMPOS = {'protocolo': str, 'loja': str, 'codigo': str, 'quantidade': int, 'defeito': str, 'status': str}
+CAMPOS = {'protocolo': str, 'loja': str, 'codigo': str, 'defeito': str, 'status': str}  # cada caso é um par
 
 
 class TransicaoInvalida(Exception):
@@ -30,8 +30,6 @@ def validar(caso):
     if not isinstance(caso, dict):
         return ['caso.json não é um objeto']
     erros = [f'campo {c} ausente ou não é {t.__name__}' for c, t in CAMPOS.items() if not isinstance(caso.get(c), t)]
-    if isinstance(caso.get('quantidade'), int) and caso['quantidade'] < 1:
-        erros.append('quantidade precisa ser >= 1')
     if caso.get('status') not in TRANSICOES:
         erros.append(f"status desconhecido: {caso.get('status')!r}")
     return erros
@@ -76,8 +74,8 @@ def proximo_protocolo(entrada):
     return str(max(numeros, default=0) + 1)
 
 
-def criar(entrada, loja, codigo, quantidade, defeito, foto):
-    """Registra um caso novo com a foto recebida. Devolve o caso gravado (status novo)."""
+def criar(entrada, loja, codigo, defeito, foto):
+    """Registra um caso novo (um par) com a foto recebida. Devolve o caso gravado (status novo)."""
     foto = Path(foto)
     if foto.suffix.lower() not in FOTOS:
         raise ValueError('foto precisa ser ' + ', '.join(FOTOS))
@@ -88,8 +86,8 @@ def criar(entrada, loja, codigo, quantidade, defeito, foto):
     pasta.mkdir(parents=True)
     nome = f'foto1{foto.suffix.lower()}'
     shutil.copyfile(foto, pasta / nome)
-    caso = {'protocolo': protocolo, 'loja': str(loja), 'codigo': codigo, 'quantidade': quantidade,
-            'defeito': defeito, 'fotos': [nome], 'status': 'novo', 'recebidoEm': datetime.now().isoformat(timespec='seconds')}
+    caso = {'protocolo': protocolo, 'loja': str(loja), 'codigo': codigo, 'defeito': defeito,
+            'fotos': [nome], 'status': 'novo', 'recebidoEm': datetime.now().isoformat(timespec='seconds')}
     erros = validar(caso)
     if erros:
         shutil.rmtree(pasta)

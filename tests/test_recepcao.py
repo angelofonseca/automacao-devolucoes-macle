@@ -39,12 +39,12 @@ class TestAtender(unittest.TestCase):
             cfg = config_teste(m.url)
             resetar(cfg.entrada)
             registrado = recepcao.atender(cfg, foto('1.1001.38'))
-            caso = {c['protocolo']: c for _, c, _ in casos.listar(cfg.entrada)}['6']
+            caso = {c['protocolo']: c for _, c, _ in casos.listar(cfg.entrada)}['7']
             self.assertEqual(caso['erp']['codigoDefeito'], '1.60000006')  # achou o defeito cadastrado no MACLE
             self.assertEqual(caso['loja'], '1')                           # a loja desta instalação
-            self.assertTrue((cfg.entrada / '6' / 'foto1.jpg').is_file())
-            self.assertIn('✅ Caso #6 registrado', self.respostas[-1])
-            self.assertEqual(registrado['protocolo'], '6')  # o main roda a rodada quando atender devolve o caso
+            self.assertTrue((cfg.entrada / '7' / 'foto1.jpg').is_file())
+            self.assertIn('✅ Caso #7 registrado', self.respostas[-1])
+            self.assertEqual(registrado['protocolo'], '7')  # o main roda a rodada quando atender devolve o caso
 
     def test_sem_defeito_no_erp_nao_registra(self):
         with MacleSimulado() as m:

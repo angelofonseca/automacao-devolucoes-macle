@@ -85,13 +85,14 @@ python -m defeitos.main
 
 **6. Mandar as fotos ao bot**
 
-No Telegram, abra o chat com o seu bot e mande uma foto por caso com o código do produto na legenda. A legenda aceita dois formatos:
+No Telegram, abra o chat com o seu bot e mande **uma foto por defeito com o código do produto na legenda. A legenda aceita dois formatos:
 - **item com tamanho**: `loja.item.tamanho`, ex.: `1.2001.40`;
 - **código do defeito no MACLE**: `loja.número`, ex.: `1.60000003`.
 
+
 #### Exemplos
 
-| Legenda (item.tamanho) | ou código do defeito | Produto | Fábrica | Qtd. |
+| Legenda (item.tamanho) | ou código do defeito | Produto | Fábrica | Pares no defeito |
 |---|---|---|---|---|
 | `1.2001.40` | `1.60000003` | Tênis casual PF-880 branco | Passo Firme | 1 |
 | `1.2001.42` | `1.60000004` | Tênis casual PF-880 branco | Passo Firme | 2 |
@@ -102,7 +103,7 @@ No Telegram, abra o chat com o seu bot e mande uma foto por caso com o código d
 | `1.3001.39` | `1.60000005` | Bota TR-120 café | Trilha | 1 |
 | `1.9001.40` | `1.60000007` | Mocassim MN-01 azul | Marca Nova | 1 |
 
-Cada código só pode ser usado **uma vez**: depois de registrado, o defeito já tem caso. As regras de cada fábrica estão em `data/fornecedores.json`:
+Cada par só pode ser registrado **uma vez**: o `1.2001.42` aceita duas fotos e os outros códigos, uma. As regras de cada fábrica estão em `data/fornecedores.json`:
 - **Passo Firme**: o e-mail sai quando o lote chega a **3 pares**;
 - **Aurora**: o e-mail sai quando o lote chega a **R$ 300,00**, e a garantia é de **12 meses da NF**: o que passou disso trava;
 - **Trilha**: está cadastrada **sem e-mail**, então o caso trava;

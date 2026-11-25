@@ -10,8 +10,12 @@ Caminho, para o código do item com tamanho (ex.: 1.1001.37):
   4. histórico de compras do item -> NF de compra da loja (a mais recente que tenha o tamanho)
   5. documento de compra -> CNPJ do fornecedor, emissão (marco do prazo) e custo unitário
 Para o código do defeito (ex.: 1.60006767) pula o passo 1.
+
+Cada foto é um par. Um defeito cadastrado com quantidade N no MACLE recebe N casos (N fotos), todos com o
+mesmo código de defeito; `usados` conta quantos pares de cada defeito já têm caso.
 """
 import re
+from collections import Counter
 from datetime import date
 
 from .telas import (TelaDesconhecida, campos_filtro, em_aberto, ler_defeito, ler_doc_compra, ler_historico_compra,
@@ -39,30 +43,40 @@ def _ordem_data(d):
     return ''.join(reversed((d or '').split('/')))
 
 
-def buscar_defeito(sessao, loja, item, tamanho, hoje, ignorar=()):
-    """Defeito em aberto mais recente do item+tamanho na loja, fora os já registrados (ignorar)."""
+def pares_do_defeito(d):
+    return int(d.get('quantidade') or 1)
+
+
+def buscar_defeito(sessao, loja, item, tamanho, hoje, usados):
+    """Defeito em aberto mais recente do item+tamanho na loja que ainda tem par sem caso."""
     sessao.get('Defeito?action=cons')  # inicializa o filtro da sessão, como o menu faz
     sessao.filtrar_defeitos(campos_filtro(sessao.get('Defeito?action=cadFiltro'), item, hoje, loja))
     do_tamanho = [d for d in ler_lista_defeitos(sessao.get('Defeito?action=cons'))
                   if d['loja'] == loja and (d['tamanho'] or '').upper() == tamanho]
-    livres = sorted((d for d in do_tamanho if em_aberto(d) and d['codigo'] not in ignorar),
+    livres = sorted((d for d in do_tamanho if em_aberto(d) and usados[d['codigo']] < pares_do_defeito(d)),
                     key=lambda d: _ordem_data(d['cadastro']), reverse=True)
     if not livres:
         raise ProdutoNaoEncontrado(f'nenhum defeito em aberto do item {item} tamanho {tamanho} nos últimos 6 meses'
-                                   + (f" (já usados: {', '.join(d['codigo'] for d in do_tamanho)})" if do_tamanho else ''))
+                                   + (f" (todos os pares já registrados: {', '.join(d['codigo'] for d in do_tamanho)})"
+                                      if do_tamanho else ''))
     return livres[0]['codigo'], len(livres)
 
 
-def consultar(sessao, codigo, loja, hoje=None, ignorar=()):
-    """Dados do produto para o caso.json. loja: a empresa desta instalação no MACLE (ex.: '1')."""
+def consultar(sessao, codigo, loja, hoje=None, usados=()):
+    """Dados do produto para o caso.json (um par).
+
+    loja: a empresa desta instalação no MACLE (ex.: '1').
+    usados: {código do defeito: pares que já têm caso} (um conjunto conta 1 por código).
+    """
     hoje = hoje or date.today()
     loja = str(loja)
+    usados = Counter(usados)
     c = interpretar_codigo(codigo)
     if c['empresa'] != loja:
         raise ProdutoNaoEncontrado(f"o código {codigo.strip()} é da loja {c['empresa']}; esta automação é da loja {loja}")
     avisos = []
     if c['origem'] == 'item':
-        cod_defeito, abertos = buscar_defeito(sessao, loja, c['item'], c['tamanho'], hoje, ignorar)
+        cod_defeito, abertos = buscar_defeito(sessao, loja, c['item'], c['tamanho'], hoje, usados)
         if abertos > 1:
             avisos.append(f"{abertos} defeitos em aberto do item {c['item']} tamanho {c['tamanho']}; usado o mais recente, {cod_defeito}")
     else:
@@ -74,6 +88,9 @@ def consultar(sessao, codigo, loja, hoje=None, ignorar=()):
         raise ProdutoNaoEncontrado(f'defeito {cod_defeito}: {exc}')
     if not em_aberto(d):
         raise ProdutoNaoEncontrado(f"defeito {cod_defeito} não está pendente na loja ({d['situacao']} / {d['local']})")
+    pares = pares_do_defeito(d)
+    if usados[cod_defeito] >= pares:
+        raise ProdutoNaoEncontrado(f"o defeito {cod_defeito} já tem {'o par registrado' if pares == 1 else f'os {pares} pares registrados'}")
     item, tamanho = d['item'], (d['tamanho'] or c.get('tamanho') or '').upper()
 
     emp_item, cod_item = item.split('.')
@@ -103,7 +120,7 @@ def consultar(sessao, codigo, loja, hoje=None, ignorar=()):
     if custo is None or not doc['cnpjFornecedor'] or not doc['emissao']:
         raise ProdutoNaoEncontrado(f"NF {nf['documento']} sem custo, CNPJ ou data de emissão legível")
     return {
-        'codigoDefeito': cod_defeito, 'item': item, 'tamanho': tamanho, 'quantidade': int(d['quantidade'] or 1),
+        'codigoDefeito': cod_defeito, 'par': usados[cod_defeito] + 1, 'pares': pares, 'item': item, 'tamanho': tamanho,
         'marca': it['marca'], 'referencia': it['referencia'], 'descricao': it['descricao'] or d['descricao'], 'cor': it['cor'],
         'custo': round(custo, 2), 'observacao': d['observacao'],
         'nf': {'documento': nf['documento'], 'loja': nf['loja'], 'numero': nf['numero'], 'serie': nf['serie'],

@@ -23,28 +23,35 @@ class TestPipeline(unittest.TestCase):
             r = pipeline.executar(cfg, HOJE, AGORA)
             self.assertTrue(r['ok'], r['falhas'])
             # 1: Aurora R$ 129,90 < R$ 300 -> aguardando; 2: sandália Aurora, NF de 15/08/2025 (12 meses) -> trava;
-            # 3 e 4: Passo Firme = 3 pares -> e-mail; 5: Trilha sem e-mail -> trava
+            # 3, 4 e 5: Passo Firme = 3 pares (4 e 5 são os dois pares do defeito 1.60000004) -> e-mail;
+            # 6: Trilha sem e-mail -> trava
             self.assertEqual(situacao(cfg), {'1': 'aguardando_lote', '2': 'aguardando_decisao', '3': 'aguardando_aprovacao',
-                                             '4': 'aguardando_aprovacao', '5': 'aguardando_decisao'})
+                                             '4': 'aguardando_aprovacao', '5': 'aguardando_aprovacao', '6': 'aguardando_decisao'})
+            erp = {c['protocolo']: c['erp'] for _, c, _ in casos.listar(cfg.entrada)}
+            self.assertEqual([(erp[p]['codigoDefeito'], erp[p]['par']) for p in ('4', '5')], [('1.60000004', 1), ('1.60000004', 2)])
             bloqueio = {b['protocolo']: b['motivo'] for b in r['bloqueados']}
             self.assertIn('fora do prazo', bloqueio['2'])
             eml = fora['rascunhos'][0]
             self.assertEqual((eml['From'], eml['To']), ('loja@teste.example', 'qualidade@passofirme.example'))
             self.assertIn('NF ORIGEM: 7720', eml.get_body().get_content())
             self.assertIn('Loja Centro', eml.get_body().get_content())
-            self.assertEqual(len(list(eml.iter_attachments())), 2)  # uma foto por caso
+            self.assertEqual(len(list(eml.iter_attachments())), 3)  # uma foto por par
+            corpo = eml.get_body().get_content()
+            self.assertIn('Seguem 3 pares', corpo)
+            self.assertIn('DEFEITO: Palmilha soltando', corpo)
+            self.assertIn('DEFEITO: Costura do bico abrindo', corpo)
             self.assertIn('✉️ Rascunho pronto para revisar: Passo Firme', fora['telegram'][0])
 
             # dois pares novos fecham o lote da Aurora: 3 x R$ 129,90 = R$ 389,70
-            criar_caso(cfg.entrada, '1', '1.1001.38', 1, 'Salto soltando')
-            criar_caso(cfg.entrada, '1', '1.1001.36', 1, 'Salto quebrado')
+            criar_caso(cfg.entrada, '1', '1.1001.38', 'Salto soltando')
+            criar_caso(cfg.entrada, '1', '1.1001.36', 'Salto quebrado')
             r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertEqual(r['rascunhos'][0]['protocolos'], ['1', '6', '7'])
+            self.assertEqual(r['rascunhos'][0]['protocolos'], ['1', '7', '8'])
             self.assertEqual((r['rascunhos'][0]['total'], r['rascunhos'][0]['assunto']), (389.7, 'Produtos com defeito'))
 
             # rascunho criado é o fim: a rodada seguinte não mexe nos casos e não avisa
             r = pipeline.executar(cfg, HOJE, AGORA)
-            self.assertEqual({situacao(cfg)[p] for p in ('1', '3', '4', '6', '7')}, {'aguardando_aprovacao'})
+            self.assertEqual({situacao(cfg)[p] for p in ('1', '3', '4', '5', '7', '8')}, {'aguardando_aprovacao'})
             self.assertEqual((r['rascunhos'], r['avisou']), ([], False))
             self.assertEqual(len(fora['rascunhos']), 2)
 
@@ -54,8 +61,8 @@ class TestPipeline(unittest.TestCase):
             resetar(cfg.entrada)
             pipeline.executar(cfg, HOJE, AGORA)
             entrada = ['--entrada', str(cfg.entrada)]
-            self.assertEqual(status.main(['--reabrir', '5'] + entrada), 0)
-            self.assertEqual(situacao(cfg)['5'], 'novo')
+            self.assertEqual(status.main(['--reabrir', '6'] + entrada), 0)
+            self.assertEqual(situacao(cfg)['6'], 'novo')
             self.assertNotEqual(status.main(['--reabrir', '3'] + entrada), 0)  # rascunho criado não reabre
 
     def test_macle_fora_do_ar_avisa_e_mantem_os_casos(self):
@@ -75,7 +82,7 @@ class TestPipeline(unittest.TestCase):
     def test_caso_invalido_e_produto_sem_defeito(self):
         with MacleSimulado() as m, integracoes_falsas():
             cfg = config_teste(m.url)
-            criar_caso(cfg.entrada, '1', '1.1001.40', 1, 'x')
+            criar_caso(cfg.entrada, '1', '1.1001.40', 'x')
             (cfg.entrada / '9').mkdir()
             (cfg.entrada / '9' / 'caso.json').write_text('{quebrado', encoding='utf-8')
             r = pipeline.executar(cfg, HOJE, AGORA)

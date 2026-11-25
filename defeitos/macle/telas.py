@@ -142,7 +142,7 @@ def ler_lista_defeitos(pagina):
             continue
         tds = _celulas(tr) + [''] * 7
         linhas.append({'codigo': f'{cod.group(1)}.{cod.group(2)}', 'loja': cod.group(1), 'descricao': tds[1],
-                       'tamanho': tds[2], 'cadastro': tds[4], 'local': tds[5], 'situacao': tds[6]})
+                       'tamanho': tds[2], 'quantidade': numero(tds[3]), 'cadastro': tds[4], 'local': tds[5], 'situacao': tds[6]})
     return linhas
 
 
