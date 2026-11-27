@@ -9,7 +9,8 @@ from datetime import datetime
 from pathlib import Path
 
 # De onde cada status pode ir. O fluxo termina no rascunho do e-mail: a pessoa revisa e envia pelo Gmail.
-# Um caso travado volta para a triagem quando a pessoa resolve (python -m defeitos.status --reabrir N).
+# Um caso travado volta para a triagem sozinho quando o motivo deixa de existir (ex.: o cadastro da fábrica
+# foi corrigido), ou quando a pessoa reabre (python -m defeitos.status --reabrir N).
 TRANSICOES = {
     'novo': {'aguardando_lote', 'aguardando_decisao', 'aguardando_aprovacao'},
     'aguardando_lote': {'aguardando_decisao', 'aguardando_aprovacao'},

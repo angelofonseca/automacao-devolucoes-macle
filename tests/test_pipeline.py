@@ -1,10 +1,14 @@
 """Rodadas completas contra o simulador do MACLE, com Gmail e Telegram falsos (sem rede externa)."""
 import json
+import shutil
+import tempfile
 import unittest
 from datetime import date, datetime
+from pathlib import Path
 from unittest import mock
 
 from defeitos import casos, pipeline, status
+from defeitos.config import RAIZ
 from tests.apoio import MacleSimulado, config_teste, criar_caso, integracoes_falsas, resetar
 
 HOJE, AGORA = date(2026, 11, 9), datetime(2026, 11, 9, 14, 0)
@@ -64,6 +68,31 @@ class TestPipeline(unittest.TestCase):
             self.assertEqual(status.main(['--reabrir', '6'] + entrada), 0)
             self.assertEqual(situacao(cfg)['6'], 'novo')
             self.assertNotEqual(status.main(['--reabrir', '3'] + entrada), 0)  # rascunho criado não reabre
+
+    def test_travado_por_cadastro_destrava_sozinho_quando_corrigido(self):
+        with MacleSimulado() as m, integracoes_falsas() as fora:
+            copia = Path(tempfile.mkdtemp()) / 'fornecedores.json'
+            shutil.copyfile(RAIZ / 'data' / 'fornecedores.json', copia)
+            cfg = config_teste(m.url, fornecedores=copia)
+            resetar(cfg.entrada)
+            pipeline.executar(cfg, HOJE, AGORA)
+            self.assertEqual((situacao(cfg)['2'], situacao(cfg)['6']), ('aguardando_decisao', 'aguardando_decisao'))
+
+            # nada mudou: os travados continuam travados e a rodada não avisa de novo
+            r = pipeline.executar(cfg, HOJE, AGORA)
+            self.assertEqual((r['destravados'], r['avisou']), ([], False))
+
+            # a pessoa cadastra o e-mail da Trilha: na rodada seguinte o caso 6 destrava e vira rascunho
+            cadastro = json.loads(copia.read_text(encoding='utf-8'))
+            next(f for f in cadastro['fornecedores'] if f['id'] == 'trilha')['contato']['email'] = 'trocas@trilha.example'
+            copia.write_text(json.dumps(cadastro, ensure_ascii=False), encoding='utf-8')
+            r = pipeline.executar(cfg, HOJE, AGORA)
+            self.assertEqual([d['protocolo'] for d in r['destravados']], ['6'])
+            self.assertEqual(situacao(cfg)['6'], 'aguardando_aprovacao')
+            self.assertEqual(fora['rascunhos'][-1]['To'], 'trocas@trilha.example')
+            self.assertIn('🔓 Caso #6 destravado (era: Trilha Botas: sem e-mail de contato cadastrado)', fora['telegram'][-1])
+            # o fora do prazo não se resolve com o tempo: continua travado
+            self.assertEqual(situacao(cfg)['2'], 'aguardando_decisao')
 
     def test_macle_fora_do_ar_avisa_e_mantem_os_casos(self):
         with MacleSimulado() as m, integracoes_falsas() as fora:

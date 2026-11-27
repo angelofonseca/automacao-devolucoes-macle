@@ -1,6 +1,8 @@
 """Uma rodada da automação: Gatilho -> Processamento -> Saída.
 
 1. Lê os casos em data/entrada/ (JSON) e descarta os inválidos com motivo.
+   Caso travado cujo motivo deixou de existir (ex.: o e-mail da fábrica foi cadastrado) destrava sozinho
+   e volta para a triagem nesta mesma rodada.
 2. Consulta os casos novos no MACLE (login + telas HTML). MACLE fora do ar não derruba a rodada:
    os casos ficam para a próxima e a falha vai no resumo.
 3. Triagem (triagem.planejar): travar, aguardar lote ou montar o e-mail à fábrica.
@@ -32,7 +34,7 @@ def sessao_loja(cfg, ao_falhar=None):
 
 def executar(cfg, hoje=None, agora=None):
     hoje, agora = hoje or date.today(), agora or datetime.now()
-    r = {'rascunhos': [], 'aguardando': [], 'bloqueados': [], 'invalidos': [], 'falhas': [], 'mudancas': 0}
+    r = {'rascunhos': [], 'aguardando': [], 'bloqueados': [], 'destravados': [], 'invalidos': [], 'falhas': [], 'mudancas': 0}
 
     def log_tentativa(tentativa, erro):
         registrar(cfg.log, evento='falha_tentativa', servico=erro.servico, tentativa=tentativa,
@@ -41,7 +43,7 @@ def executar(cfg, hoje=None, agora=None):
     cadastro = json.loads(cfg.fornecedores.read_text(encoding='utf-8'))
 
     # 1. Leitura e validação
-    todos, pendentes = [], []
+    todos, pendentes, travados = [], [], []
     for pasta, caso, erros in repo.listar(cfg.entrada):
         if erros:
             r['invalidos'].append({'pasta': pasta.name, 'erros': erros})
@@ -49,6 +51,8 @@ def executar(cfg, hoje=None, agora=None):
         todos.append(caso)
         if caso['status'] in repo.EM_TRIAGEM:
             pendentes.append((pasta, caso))
+        elif caso['status'] == 'aguardando_decisao':
+            travados.append((pasta, caso))
 
     def mudar(pasta, caso, status, motivo, **extra):
         mudou = repo.mudar_status(caso, status, motivo)
@@ -56,6 +60,16 @@ def executar(cfg, hoje=None, agora=None):
         repo.gravar(pasta, caso)
         r['mudancas'] += mudou
         return mudou
+
+    # Travados: confere de novo as regras da triagem. Se o motivo sumiu (cadastro corrigido), destrava sozinho.
+    # Travado sem dados do ERP (defeito não achado no MACLE) ou que continua travado fica como está, sem novo aviso.
+    for pasta, caso in travados:
+        if 'erp' not in caso or triagem.avaliar(caso, cadastro['fornecedores'], hoje)['trava']:
+            continue
+        motivo = caso.pop('bloqueio', '')
+        mudar(pasta, caso, 'novo', f'destravado: o motivo deixou de existir ({motivo})')
+        r['destravados'].append({'protocolo': caso['protocolo'], 'motivo': motivo})
+        pendentes.append((pasta, caso))
 
     # 2. Consulta no MACLE (uma sessão para a rodada inteira)
     sessao = None
@@ -125,6 +139,8 @@ def mensagem(r, agora):
         linhas.append(f"✉️ Rascunho pronto para revisar: {x['fornecedor']} (loja {x['loja']}), "
                       f"{x['pares']} {'par' if x['pares'] == 1 else 'pares'}, {brl(x['total'])}, casos #{', #'.join(x['protocolos'])}")
         linhas += [f'   ⚠️ {a}' for a in x['avisos']]
+    for d in r['destravados']:
+        linhas.append(f"🔓 Caso #{d['protocolo']} destravado (era: {d['motivo']}); voltou para a triagem")
     for a in r['aguardando']:
         falta = []
         if a['total'] < a['minimo']:

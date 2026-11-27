@@ -129,11 +129,15 @@ Cada par só pode ser registrado **uma vez**: o `1.2001.42` aceita duas fotos e 
 
 ### Casos travados
 
-Caso travado (fora do prazo, fábrica sem cadastro ou sem e-mail, defeito não encontrado no MACLE) fica em `aguardando_decisao`, com o motivo no resumo do Telegram. Depois de resolver (ex.: cadastrar o e-mail da fábrica no `data/fornecedores.json`), reabra o caso para ele voltar à triagem na próxima rodada:
+Caso travado (fora do prazo, fábrica sem cadastro ou sem e-mail) fica em `aguardando_decisao`, com o motivo no resumo do Telegram ("⛔").
+
+A cada rodada, os casos travados passam de novo pelas regras da triagem. **Se o motivo deixou de existir, o caso destrava sozinho** e volta para a triagem na mesma rodada. Por exemplo: você cadastra o e-mail da fábrica no `data/fornecedores.json`, e na rodada seguinte o caso destrava ("🔓") e pode virar rascunho. Se continua travado, nada muda e o aviso não se repete.
+
+Caso fora do prazo não se resolve com o tempo: ele continua travado e a decisão é da pessoa (por exemplo, falar direto com a fábrica). Para consultar os casos e forçar uma nova triagem pelo terminal:
 
 ```bash
-python -m defeitos.status               # status de todos os casos
-python -m defeitos.status --reabrir 5   # o caso 5 volta para a triagem
+python -m defeitos.status               # status de todos os casos (com o motivo dos travados)
+python -m defeitos.status --reabrir 5   # o caso 5 volta para a triagem na próxima rodada
 ```
 
 ### Testes
