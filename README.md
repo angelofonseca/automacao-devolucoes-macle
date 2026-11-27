@@ -22,15 +22,9 @@ Essa automação visa ajudar quem estiver inciando este processo, pois se o prod
 
 ### Arquitetura e fluxo
 
-1. **Gatilho** (`defeitos/main.py`). Um processo só: ouve o bot por long polling e, a cada `INTERVALO_MIN` minutos, faz uma rodada agendada. Cada caso registrado dispara uma rodada na hora.
-2. **Recepção** (`recepcao.py`). Lê o código na legenda, confere no MACLE que há um defeito em aberto com aquela referência, baixa a foto, grava o caso e responde no chat.
-3. **Consulta no MACLE** (`defeitos/macle/`). A automação faz o mesmo caminho que a pessoa faz na tela e lê o HTML (login, filtro de defeitos, defeito, item, histórico de compras e documento de compra). Cada tela tem uma função de leitura em `telas.py`, e o resultado vai para o `caso.json`.
-4. **Triagem** (`triagem.py`). Acha a fábrica pelo CNPJ da NF e decide:
-   - sem cadastro ou sem e-mail → **trava**, o caso vai para decisão humana;
-   - fora do prazo de garantia (contado da emissão da NF) → **trava**. Vale também para o caso que vence enquanto espera o lote fechar;
-   - casos da mesma fábrica formam um **lote**, que só vira e-mail ao atingir o mínimo em R$ e em pares.
-5. **E-mail.** O `gmail.py` grava o rascunho, com as fotos anexadas, na pasta Rascunhos por IMAP.
-6. **Resumo.** O Telegram recebe o que mudou na rodada, e cada rodada vira uma linha em `logs/execucoes.jsonl`.
+1. **Gatilho**: Produto com defeito é enviado pelo telegram
+2. **Processamento**: Consulta na MACLE por HTTP, fazendo scraping (sem API) e aplica as regras fábrica
+3. **Saída.** Cria o rascunho no gmail com as fotos anexadas, na pasta Rascunhos por IMAP. Além disso, envia um resumo no Telegram
 
 ---
 
