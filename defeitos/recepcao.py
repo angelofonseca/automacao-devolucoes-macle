@@ -1,4 +1,4 @@
-"""Recepção pelo Telegram (gatilho): o gerente manda a foto do par com o código na legenda.
+"""Recepção pelo Telegram (gatilho): foto do par com o código na legenda.
 
 Quem ouve o bot é o defeitos.main. Para cada foto que chega do chat autorizado (TELEGRAM_CHAT_ID):
   1. lê o código na legenda: item com tamanho (ex.: 1.1001.38) ou o do defeito no MACLE (ex.: 1.60000006);

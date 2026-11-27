@@ -26,12 +26,36 @@ Essa automação visa ajudar quem estiver inciando este processo, pois se o prod
 2. **Processamento**: Consulta na MACLE por HTTP, fazendo scraping (sem API) e aplica as regras fábrica
 3. **Saída.** Cria o rascunho no gmail com as fotos anexadas, na pasta Rascunhos por IMAP. Além disso, envia um resumo no Telegram
 
+```mermaid
+flowchart LR
+    U(["Usuário"]) -->|"defeito"| TG["Telegram<br/>(bot)"]
+
+    subgraph PY["Automação em Python"]
+        R["recepcao.py<br/>lê a mensagem"]
+        C["Consulta no ERP<br/>defeito → item → NF"]
+        T["Triagem<br/>Regras de negócio"]
+        A["Agendamento<br/>a cada INTERVALO_MIN"]
+    end
+
+    TG -->|"HTTPS (long polling)"| R
+    R --> C
+    C <-->|"HTTP"| M[("MACLE")]
+    C --> T
+    A --> T
+    F[("fornecedores.json")] --> T
+    T -->|"IMAP/TLS"| GM["Gmail<br/>rascunho do e-mail"]
+    T -->|"HTTPS"| TG2["Telegram<br/>resumo da rodada"]
+```
+
 ---
 
 ### Tecnologias
 
 Tecnologias: Python, Docker, unittest.
+<br>
 Serviços: MACLE, Gmail, Telegram (Bot).
+<br>
+Bibliotecas: imaplib, ssl, requests.
 
 ---
 
